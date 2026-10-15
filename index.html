@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nesta – Find your nest</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{--bg:#f4ead9;--card:#fffaf1;--tx:#3b2417;--mu:#7a6250;--br:#e2d3ba;--pr:#8b4a2b;--pr2:#f0dfc6;--ac:#c8832a;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#1e1510;--card:#2a1d15;--tx:#f3e7d3;--mu:#bfa88c;--br:#4a3628;--pr:#d99061;--pr2:#3a2a1e;--ac:#e0a040;--on:#2a160c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom,0px)}
+.w0{max-width:1000px;margin:0 auto;padding:0 16px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 0}
+.logo{font:800 24px Georgia,serif;color:var(--pr)}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--pr);color:var(--on);border:0;border-radius:10px;padding:10px 16px;font-weight:600}
+.btn.o{background:transparent;color:var(--pr);border:1.5px solid var(--pr)}
+.btn.w{width:100%;margin-top:8px}
+.hero{padding:26px 18px 28px;border-radius:20px;background:linear-gradient(135deg,#3d2314,#7a4326);position:relative;overflow:hidden;margin-bottom:16px}
+.hero:after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;background:repeating-linear-gradient(90deg,#c8832a 0 16px,#2a160c 16px 24px,#b5471f 24px 40px,#f4ead9 40px 48px)}
+h1{font:700 clamp(26px,6vw,40px)/1.15 Georgia,serif;margin:0 0 8px;color:#f6ead6}
+.sub{color:#e5cfae;margin:0 0 16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;background:var(--card);border:1px solid var(--br);border-radius:14px;padding:10px}
+input,select,textarea{width:100%;padding:10px;margin:5px 0;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.bar select,.bar input{flex:1 1 130px;width:auto;margin:0}
+.tabs{display:flex;gap:8px;margin:14px 0 0;overflow-x:auto;padding-bottom:4px}
+.tab{background:var(--card);color:var(--tx);border:1px solid var(--br);border-radius:99px;padding:7px 14px;white-space:nowrap}
+.tab.on{background:var(--ac);color:#2a160c;border-color:var(--ac)}
+#map{display:none;height:340px;border-radius:14px;border:1px solid var(--br);margin-bottom:14px;z-index:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;padding-bottom:30px}
+.card{background:var(--card);border:1px solid var(--br);border-radius:14px;overflow:hidden;cursor:pointer;box-shadow:0 2px 8px #3b241714}
+.card.sp{border:2px solid var(--ac)}
+.img{height:160px;position:relative;background:linear-gradient(135deg,#8b4a2b,#e0b98a) center/cover;display:flex;align-items:center;justify-content:center}
+.ph{font-size:48px;opacity:.7}
+.tag{position:absolute;top:10px;left:10px;background:var(--ac);color:#222;font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px}
+.tag.r{left:auto;right:10px;background:#2f855a;color:#fff}
+.tag.b{top:auto;bottom:10px}
+.fv{position:absolute;bottom:8px;right:10px;background:var(--card);border-radius:99px;padding:3px 9px;font-size:17px;color:#c53030}
+.cb{padding:12px}.pr{font:800 19px Georgia,serif;color:var(--pr)}.mu{color:var(--mu);font-size:14px}
+.ov{position:fixed;inset:0;background:#0009;display:none;align-items:flex-end;justify-content:center;z-index:9999}
+.ov.s{display:flex}
+.mo{background:var(--card);width:100%;max-width:560px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+.mo h2{margin:0 0 6px;font-family:Georgia,serif}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.note{background:var(--pr2);border-radius:10px;padding:10px;font-size:14px;margin:10px 0}
+.pt{cursor:pointer}
+.x{float:right;background:none;border:0;font-size:26px;color:var(--mu)}
+.gal{display:flex;gap:8px;overflow-x:auto;margin:6px 0 10px}
+.gal img,.gal video{height:200px;border-radius:12px;flex:none}
+.ph2{height:140px;width:100%;display:flex;align-items:center;justify-content:center;font-size:56px;background:var(--pr2);border-radius:12px}
+.ok{color:#2f855a}.er{color:#c53030;font-size:14px;min-height:18px;margin:6px 0 0}.c{text-align:center}
+.ms{height:260px;overflow:auto;background:var(--bg);border-radius:10px;padding:8px;margin:8px 0}
+.me,.th{margin:4px 0}.me{text-align:right}
+.me span,.th span{display:inline-block;max-width:80%;padding:6px 10px;border-radius:12px;background:var(--card);text-align:left}
+.me span{background:var(--pr);color:var(--on)}
+.empty{grid-column:1/-1;text-align:center;color:var(--mu);padding:30px 10px}
+footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
+</style>
+</head>
+<body>
+<div class="w0">
+<header><span class="logo">🪺 Nesta</span><span><button class="btn o" id="acb" onclick="me?accM():authM()" style="margin-right:6px">Sign in</button><button class="btn" onclick="postM()">+ List</button></span></header>
+<section class="hero">
+<h1>Find your nest. Inspect without the stress.</h1>
+<p class="sub">Verified listings across Nigeria &amp; Africa, fair-priced inspections, and flip deals you can earn from.</p>
+<div class="bar">
+<select id="city" onchange="render()"><option value="">All cities</option></select>
+<select id="type" onchange="render()"><option value="">Any type</option><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select>
+<input id="max" type="number" placeholder="Max price ₦" oninput="render()">
+</div>
+<div class="tabs" id="tabs"></div>
+</section>
+<div id="map"></div>
+<div class="grid" id="grid"><div class="empty">Loading…</div></div>
+<footer>Nesta · early test version</footer>
+</div>
+<div class="ov" id="ov" onclick="if(event.target===this)closeM()"><div class="mo" id="mo"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const sb=supabase.createClient('https://wcwleujbfwqddfbyyxcm.supabase.co','sb_publishable_k1S1Qp6_5H9LuczUh2PrCA_6SjVqG_J');
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const N=n=>'₦'+Number(n).toLocaleString('en-NG');
+const mu=p=>sb.storage.from('listing-media').getPublicUrl(p).data.publicUrl;
+const CC={Lagos:[6.5244,3.3792],Abuja:[9.0765,7.3986],'Port Harcourt':[4.8156,7.0498],Ibadan:[7.3775,3.947],Kano:[12.0022,8.592],Enugu:[6.4584,7.5464],Accra:[5.6037,-0.187],Nairobi:[-1.2921,36.8219]};
+const ROLE={buyer:'Buyer / Renter',agent:'Agent',landlord:'Landlord',inspector:'Inspector'};
+let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],mode='all',vo=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
+$('city').insertAdjacentHTML('beforeend',Object.keys(CC).map(c=>`<option>${c}</option>`).join(''));
+
+const isSp=l=>PM[l.id]>Date.now();
+const km=(a,b)=>{const r=x=>x*Math.PI/180,d=r(b[0]-a[0]),e=r(b[1]-a[1]),h=Math.sin(d/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(e/2)**2;return 12742*Math.asin(Math.sqrt(h))};
+function err(m){const e=$('er');if(e)e.textContent=m}
+
+/* ---------- data ---------- */
+sb.auth.onAuthStateChange((_e,s)=>{setTimeout(()=>setUser(s?.user||null),0)});
+async function setUser(u){
+  me=u;prof=null;FV=new Set();
+  if(me){
+    const p=await sb.from('profiles').select('*').eq('id',me.id).single();prof=p.data;
+    const f=await sb.from('favorites').select('listing_id');FV=new Set((f.data||[]).map(r=>r.listing_id));
+  }
+  $('acb').textContent=prof?'👤 '+prof.name.split(' ')[0]:'Sign in';
+  render();
+}
+async function loadAll(){
+  const [a,b,c]=await Promise.all([
+    sb.from('listings').select('*,profiles(name,verified)').order('created_at',{ascending:false}).limit(200),
+    sb.from('promotions').select('*'),
+    sb.from('profiles').select('id,name,verified').eq('role','inspector')]);
+  if(a.error){$('grid').innerHTML='<div class="empty">Could not load listings: '+esc(a.error.message)+'</div>';return}
+  L=a.data||[];PM={};(b.data||[]).forEach(p=>PM[p.listing_id]=new Date(p.until).getTime());INS=c.data||[];render();
+}
+
+/* ---------- list + map ---------- */
+function list(){
+  const c=$('city').value,t=$('type').value,mx=+$('max').value||1e15;
+  let r=L.filter(l=>(mode=='all'||l.mode==mode)&&(!c||l.city==c)&&(!t||l.type==t)&&l.price<=mx&&(!vo||l.profiles?.verified)&&(!sv||FV.has(l.id)));
+  r.forEach(l=>{l._d=near&&l.lat!=null?km(near,[l.lat,l.lng]):null});
+  if(near)r.sort((a,b)=>(a._d??1e9)-(b._d??1e9));
+  const sp=r.filter(isSp).slice(0,3);
+  return sp.concat(r.filter(l=>!sp.includes(l)));
+}
+const chip=(k,t,on)=>`<button class="tab${on?' on':''}" onclick="tg('${k}')">${t}</button>`;
+function tg(k){
+  if(k=='vo')vo=!vo;
+  else if(k=='sv'){if(!me)return authM();sv=!sv}
+  else if(k=='nr'){
+    if(near){near=null}else{navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{near=[p.coords.latitude,p.coords.longitude];render()},()=>alert('Allow location access to sort by distance.')):alert('Location not supported.');return}
+  }
+  render();
+}
+function render(){
+  $('tabs').innerHTML=[['all','All'],['buy','Buy'],['rent','Rent'],['flip','Flip deals']].map(([k,v])=>`<button class="tab${mode==k?' on':''}" onclick="mode='${k}';render()">${v}</button>`).join('')
+    +chip('vo','✔ Verified',vo)+chip('sv','♥ Saved',sv)+chip('nr','📍 Near me',!!near)
+    +`<button class="tab${view=='map'?' on':''}" onclick="view=view=='map'?'list':'map';render()">🗺 Map</button>`;
+  const r=list();
+  $('grid').innerHTML=r.length?r.map(card).join(''):'<div class="empty">No listings yet. Agents and landlords can sign up and tap “+ List” to add the first one.</div>';
+  drawMap(r);
+}
+function card(l){
+  const m=(l.media||[]).find(x=>x.kind=='image'),sp=isSp(l);
+  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${l.mode=='flip'?'<span class="tag">FLIP DEAL</span>':''}${l.profiles?.verified?'<span class="tag r">✔ Verified</span>':''}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><div>${esc(l.title)}</div><div class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div></div></div>`;
+}
+function drawMap(r){
+  const el=$('map');
+  if(view!='map'){el.style.display='none';return}
+  el.style.display='block';
+  if(!map){
+    map=L.map('map').setView([9.08,8.67],6);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+    layer=L.layerGroup().addTo(map);
+  }
+  layer.clearLayers();const pts=[];
+  r.filter(l=>l.lat!=null).forEach(l=>{
+    L.circleMarker([l.lat,l.lng],{radius:10,color:'#fff',weight:2,fillColor:isSp(l)?'#c8832a':'#8b4a2b',fillOpacity:1}).addTo(layer).bindTooltip(N(l.price)).on('click',()=>show(l.id));
+    pts.push([l.lat,l.lng]);
+  });
+  setTimeout(()=>{map.invalidateSize();if(near)pts.push(near);if(pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:14})},60);
+}
+
+/* ---------- modal ---------- */
+function openM(h){$('mo').innerHTML='<button class="x" onclick="closeM()">×</button>'+h;$('ov').classList.add('s')}
+function closeM(){if(ch){sb.removeChannel(ch);ch=null}$('ov').classList.remove('s')}
+
+/* ---------- auth + account ---------- */
+function authM(up){
+  openM(`<h2>${up?'Join Nesta':'Welcome back'}</h2>${up?`<input id="an" placeholder="Your name"><select id="ar"><option value="buyer">I want to buy or rent</option><option value="agent">I am an agent</option><option value="landlord">I am a landlord / owner</option><option value="inspector">I am an inspector</option></select>`:''}<input id="ae" type="email" placeholder="Email" autocomplete="email"><input id="ap" type="password" placeholder="Password (6+ characters)" autocomplete="${up?'new':'current'}-password"><button class="btn w" onclick="doAuth(${!!up})">${up?'Create account':'Sign in'}</button><p id="er" class="er"></p><p class="mu c" style="cursor:pointer" onclick="authM(${!up})">${up?'Have an account? Sign in':'New here? Create an account'}</p>`);
+}
+async function doAuth(up){
+  const email=$('ae').value.trim(),password=$('ap').value;let r;
+  if(up){const name=$('an').value.trim();if(!name)return err('Add your name');
+    r=await sb.auth.signUp({email,password,options:{data:{name,role:$('ar').value}}})}
+  else r=await sb.auth.signInWithPassword({email,password});
+  if(r.error)return err(r.error.message);
+  if(up&&!r.data.session)return err('Check your email to confirm, then sign in.');
+  closeM();
+}
+function accM(){
+  const v=prof?.verified;
+  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role!='buyer'&&!v?'<button class="btn o w" onclick="verM()">Get verified</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+}
+async function out(){await sb.auth.signOut();closeM()}
+function verM(){
+  openM(`<h2>Get verified</h2><p class="mu">We review every request by hand and may call you. Do not enter ID or card numbers here.</p><input id="vr" placeholder="${prof.role=='agent'?'Agency / ESVARBON registration no.':prof.role=='inspector'?'Professional registration (e.g. COREN, NIOB)':'Property document ref (C of O / deed)'}"><input id="vp" type="tel" placeholder="Phone / WhatsApp"><textarea id="vn" rows="3" placeholder="Office address, website or social page"></textarea><button class="btn w" onclick="verSend()">Submit for review</button><p id="er" class="er"></p>`);
+}
+async function verSend(){
+  const reg_ref=$('vr').value.trim(),phone=$('vp').value.trim();if(!reg_ref||!phone)return err('Add your registration ref and phone');
+  const {error}=await sb.from('verifications').upsert({user_id:me.id,reg_ref,phone,note:$('vn').value.trim().slice(0,300),status:'pending'});
+  if(error)return err(error.message);
+  openM('<h2>Submitted ✔</h2><p>We will review your details and contact you. Your badge appears once approved.</p><button class="btn w" onclick="closeM()">Done</button>');
+}
+
+/* ---------- listings ---------- */
+async function fav(id){
+  if(!me)return authM();
+  if(FV.has(id)){FV.delete(id);render();await sb.from('favorites').delete().eq('listing_id',id)}
+  else{FV.add(id);render();await sb.from('favorites').insert({listing_id:id})}
+}
+function show(id){
+  const l=L.find(x=>x.id==id);if(!l)return;
+  const med=(l.media||[]).map(m=>m.kind=='video'?`<video src="${mu(m.path)}" controls playsinline></video>`:`<img src="${mu(m.path)}" alt="">`).join('');
+  const flip=l.mode=='flip'&&l.arv?`<div class="note"><b>Flip estimate</b><br>Buy ${N(l.price)} + repairs ${N(l.repair||0)} → resell ${N(l.arv)}<br><b>Potential profit: ${N(l.arv-l.price-(l.repair||0))}</b> <span class="mu">(estimate only)</span></div>`:'';
+  const own=me&&l.owner_id==me.id;
+  openM(`<div class="gal">${med||'<div class="ph2">🏠</div>'}</div><h2>${esc(l.title)}</h2><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><p class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}</p><p>${esc(l.description)}</p>${flip}<p class="mu">Listed by ${esc(l.profiles?.name||'—')} ${l.profiles?.verified?'<b class="ok">✔ Verified</b>':'(unverified)'}</p><button class="btn o w" onclick="fav(${l.id});show(${l.id})">${FV.has(l.id)?'♥ Saved':'♡ Save'}</button>${own?`${prof?.verified&&!isSp(l)?`<button class="btn w" onclick="promoM(${l.id})">⭐ Promote this listing</button>`:''}${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}<button class="btn o w" onclick="del(${l.id})">Delete listing</button>`:`<button class="btn w" onclick="chat(${l.id})">💬 Chat about this property</button><button class="btn o w" onclick="bookM(${l.id})">Book an inspection</button>`}`);
+}
+async function del(id){
+  if(!confirm('Delete this listing?'))return;
+  const {error}=await sb.from('listings').delete().eq('id',id);if(error)return alert(error.message);
+  L=L.filter(x=>x.id!=id);closeM();render();
+}
+function postM(){
+  if(!me)return authM();
+  if(!['agent','landlord'].includes(prof?.role)){alert('Only agents and landlords can list properties. Create an account with that role.');return}
+  PG=null;
+  openM(`<h2>List a property</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc">${Object.keys(CC).map(c=>`<option>${c}</option>`).join('')}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu"></p><label class="mu">Photos / video (up to 5)</label><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">Publish</button><p id="er" class="er"></p>`);
+}
+function geo(){
+  navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{PG=[p.coords.latitude,p.coords.longitude];$('pg').textContent='📍 Location saved'},()=>$('pg').textContent='Could not get location. The city centre will be used.'):0;
+}
+async function post(){
+  const title=$('pt').value.trim(),price=+$('pp').value,city=$('pc').value;
+  if(title.length<3||!price)return err('Add a title and price');
+  const b=$('ps');b.disabled=true;b.textContent='Uploading…';
+  const files=[...$('pf').files].slice(0,5),media=[];
+  for(let i=0;i<files.length;i++){
+    const f=files[i],ext=(f.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'bin',path=`${me.id}/${Date.now()}-${i}.${ext}`;
+    const {error}=await sb.storage.from('listing-media').upload(path,f,{contentType:f.type});
+    if(error){err('Upload failed: '+error.message);b.disabled=false;b.textContent='Publish';return}
+    media.push({path,kind:f.type.startsWith('video')?'video':'image'});
+  }
+  const c=PG||CC[city];
+  const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:+$('pb').value||0,lat:c[0],lng:c[1],arv:+$('pv').value||null,repair:+$('pr').value||null,media};
+  const {data,error}=await sb.from('listings').insert(row).select('*,profiles(name,verified)').single();
+  if(error){err(error.message);b.disabled=false;b.textContent='Publish';return}
+  L.unshift(data);closeM();render();
+}
+
+/* ---------- inspections + promotion ---------- */
+function bookM(id){
+  if(!me)return authM();
+  openM(`<h2>Book an inspection</h2><p class="mu">Flat-fee inspection by a local inspector.</p><input id="bn" placeholder="Your name" value="${esc(prof?.name||'')}"><input id="bp" type="tel" placeholder="Phone / WhatsApp"><input id="bd" type="date"><select id="bi"><option value="">Any available inspector</option>${INS.map(i=>`<option value="${i.id}">${esc(i.name)}${i.verified?' ✔':''}</option>`).join('')}</select><button class="btn w" onclick="book(${id})">Request inspection</button><p id="er" class="er"></p>`);
+}
+async function book(id){
+  const name=$('bn').value.trim(),phone=$('bp').value.trim();if(!name||!phone)return err('Add your name and phone');
+  const {error}=await sb.from('inspection_requests').insert({listing_id:id,inspector_id:$('bi').value||null,name,phone,preferred_date:$('bd').value||null});
+  if(error)return err(error.message);
+  openM('<h2>Request sent ✔</h2><p>An inspector will contact you on '+esc(phone)+'.</p><button class="btn w" onclick="closeM()">Done</button>');
+}
+function promoM(id){
+  openM(`<h2>Promote your listing</h2><p class="mu">Sponsored listings appear at the top with a Sponsored label. Pay by bank transfer after you submit and we activate it once payment is confirmed.</p><select id="pdays"><option value="7">7 days · ₦5,000</option><option value="30">30 days · ₦15,000</option></select><button class="btn w" onclick="promo(${id})">Request sponsorship</button><p id="er" class="er"></p><p class="mu">Prices are placeholders for testing.</p>`);
+}
+async function promo(id){
+  const {error}=await sb.from('promo_requests').insert({listing_id:id,days:+$('pdays').value});
+  if(error)return err(error.message);
+  openM('<h2>Request sent ✔</h2><p>We will contact you with payment details.</p><button class="btn w" onclick="closeM()">Done</button>');
+}
+
+/* ---------- chat ---------- */
+async function chat(id){
+  if(!me)return authM();
+  const l=L.find(x=>x.id==id);
+  let {data:t}=await sb.from('threads').select('id').eq('listing_id',id).eq('buyer_id',me.id).maybeSingle();
+  if(!t){const r=await sb.from('threads').insert({listing_id:id,owner_id:l.owner_id}).select('id').single();if(r.error)return alert(r.error.message);t=r.data}
+  thread(t.id);
+}
+async function inbox(){
+  const {data}=await sb.from('threads').select('id,buyer_id,owner_id,listings(title)').order('created_at',{ascending:false});
+  const T=data||[],ids=[...new Set(T.map(t=>t.buyer_id==me.id?t.owner_id:t.buyer_id))];
+  const ps=ids.length?(await sb.from('profiles').select('id,name').in('id',ids)).data||[]:[];
+  const nm=Object.fromEntries(ps.map(p=>[p.id,p.name]));
+  openM('<h2>Messages</h2>'+(T.length?T.map(t=>`<div class="note pt" onclick="thread(${t.id})"><b>${esc(t.listings?.title||'Listing')}</b><br>${esc(nm[t.buyer_id==me.id?t.owner_id:t.buyer_id]||'')}</div>`).join(''):'<p class="mu">No conversations yet.</p>'));
+}
+async function thread(id){
+  if(ch){sb.removeChannel(ch);ch=null}
+  SEEN=new Set();
+  openM(`<h3 style="margin:0">Chat</h3><div id="ms" class="ms"></div><div class="row"><input id="mi" placeholder="Type a message" style="margin:0" onkeydown="if(event.key=='Enter')send(${id})"><button class="btn" style="flex:0 0 auto" onclick="send(${id})">Send</button></div>`);
+  const {data}=await sb.from('messages').select('*').eq('thread_id',id).order('created_at');
+  (data||[]).forEach(addMsg);
+  ch=sb.channel('t'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'thread_id=eq.'+id},p=>addMsg(p.new)).subscribe();
+}
+function addMsg(m){
+  if(SEEN.has(m.id))return;SEEN.add(m.id);const e=$('ms');if(!e)return;
+  e.insertAdjacentHTML('beforeend',`<div class="${m.sender_id==me.id?'me':'th'}"><span>${esc(m.body)}</span></div>`);e.scrollTop=e.scrollHeight;
+}
+async function send(id){
+  const i=$('mi'),body=i.value.trim();if(!body)return;i.value='';
+  const {data,error}=await sb.from('messages').insert({thread_id:id,body}).select().single();
+  error?alert(error.message):addMsg(data);
+}
+
+loadAll();
+</script>
+</body>
+</html>
