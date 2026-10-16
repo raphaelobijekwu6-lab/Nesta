@@ -80,6 +80,8 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
 .fbody.col .ms{flex:1;height:auto;border-radius:0;margin:0;padding:12px}
 .fin{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--br);background:var(--card);flex:none}
 .fin input{margin:0}
+.pbar{height:10px;background:var(--br);border-radius:99px;margin:8px 0;overflow:hidden}.pbar i{display:block;height:100%;background:var(--ac)}
+.tag.r.gold{background:#B3833B;color:#fff}
 </style>
 </head>
 <body>
@@ -89,6 +91,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
 <div class="tg">ROOTED IN HOME. ELEVATING LIVES.</div>
 <h1>Find your nest. Inspect without the stress.</h1>
 <p class="sub">Verified listings across Nigeria &amp; Africa, fair-priced inspections, and flip deals you can earn from.</p>
+<button class="btn" onclick="joinAgent()" style="margin-bottom:14px">Join as Agent · List Property</button>
 <div class="bar">
 <select id="city" onchange="render()"><option value="">All states</option></select>
 <select id="type" onchange="render()"><option value="">Any type</option><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select>
@@ -140,7 +143,7 @@ async function setUser(u){
 }
 async function loadAll(){
   const [a,b,c,d]=await Promise.all([
-    sb.from('listings').select('*,profiles!owner_id(name,verified,role)').order('created_at',{ascending:false}).limit(200),
+    sb.from('listings').select('*,profiles!owner_id(name,verified,role,kyc_level)').order('created_at',{ascending:false}).limit(200),
     sb.from('promotions').select('*'),
     sb.from('profiles').select('id,name,verified').eq('role','inspector'),
     sb.from('ratings').select('*')]);
@@ -153,7 +156,7 @@ function list(){
   const c=$('city').value,t=$('type').value,mx=+$('max').value||1e15;
   let r=L.filter(l=>(mode=='all'||l.mode==mode)&&(!c||l.city==c)&&(!t||l.type==t)&&l.price<=mx&&(!vo||l.profiles?.verified)&&(!sv||FV.has(l.id)));
   r.forEach(l=>{l._d=near&&l.lat!=null?km(near,[l.lat,l.lng]):null});
-  if(near)r.sort((a,b)=>(a._d??1e9)-(b._d??1e9));
+  if(near)r.sort((a,b)=>(a._d??1e9)-(b._d??1e9));else r.sort((a,b)=>lvl(b.profiles)-lvl(a.profiles));
   const sp=r.filter(isSp).slice(0,3);
   return sp.concat(r.filter(l=>!sp.includes(l)));
 }
@@ -176,7 +179,7 @@ function render(){
 }
 function card(l){
   const m=(l.media||[]).find(x=>x.kind=='image'),sp=isSp(l);
-  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${l.mode=='flip'?'<span class="tag">FLIP DEAL</span>':''}${l.profiles?.verified?'<span class="tag r">✔ Verified</span>':''}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><div>${esc(l.title)}</div><div class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div></div>${cact(l)}</div>`;
+  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${l.mode=='flip'?'<span class="tag">FLIP DEAL</span>':''}${vb(l)}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><div>${esc(l.title)}</div><div class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div></div>${cact(l)}</div>`;
 }
 function drawMap(r){
   const el=$('map');
@@ -200,7 +203,8 @@ function openM(h){FB=null;$('ov').classList.remove('full');fitVV();curTh=null;if
 function closeM(){curTh=null;FB=null;if(pmap){pmap.remove();pmap=null}if(ch){sb.removeChannel(ch);ch=null}$('ov').classList.remove('s','full');fitVV();hpop();if(me)render()}
 
 /* ---------- auth + account ---------- */
-function authM(up){
+function authM(up,role0){
+  setTimeout(()=>{if(role0&&$('ar'))$('ar').value=role0},0);
   openM(`<h2>${up?'Join Nesta':'Welcome back'}</h2>${up?`<input id="an" placeholder="Your name"><select id="ar"><option value="buyer">I want to buy or rent</option><option value="agent">I am an agent</option><option value="landlord">I am a landlord / owner</option><option value="inspector">I am an inspector</option></select>`:''}<input id="ae" type="email" placeholder="Email" autocomplete="email"><input id="ap" type="password" placeholder="Password (6+ characters)" autocomplete="${up?'new':'current'}-password"><button class="btn w" onclick="doAuth(${!!up})">${up?'Create account':'Sign in'}</button><p id="er" class="er"></p><p class="mu c" style="cursor:pointer" onclick="authM(${!up})">${up?'Have an account? Sign in':'New here? Create an account'}</p>`);
 }
 async function doAuth(up){
@@ -210,11 +214,13 @@ async function doAuth(up){
   else r=await sb.auth.signInWithPassword({email,password});
   if(r.error)return err(r.error.message);
   if(up&&!r.data.session)return err('Check your email to confirm, then sign in.');
+  const role=up?$('ar').value:null;
   closeM();
+  if(role&&role!='buyer'){await new Promise(x=>setTimeout(x,1500));if(prof)kycM()}
 }
 function accM(){
   const v=prof?.verified;
-  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'&&!v?'<button class="btn o w" onclick="verM()">Get verified</button>':''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
 }
 async function out(){await sb.auth.signOut();closeM()}
 function verM(){
@@ -238,7 +244,7 @@ function show(id){
   const med=(l.media||[]).map(m=>m.kind=='video'?`<video src="${mu(m.path)}" controls playsinline></video>`:`<img src="${mu(m.path)}" alt="">`).join('');
   const flip=l.mode=='flip'&&l.arv?`<div class="note"><b>Flip estimate</b><br>Buy ${N(l.price)} + repairs ${N(l.repair||0)} → resell ${N(l.arv)}<br><b>Potential profit: ${N(l.arv-l.price-(l.repair||0))}</b> <span class="mu">(estimate only)</span></div>`:'';
   const own=me&&l.owner_id==me.id;
-  openM(`<div class="gal">${med||'<div class="ph2">🏠</div>'}</div><h2>${esc(l.title)}</h2><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><p class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}</p><p>${esc(l.description)}</p>${flip}<p class="mu">Listed by ${esc(l.profiles?.name||'—')} ${l.profiles?.verified?'<b class="ok">✔ Verified</b>':'(unverified)'}</p><button class="btn o w" onclick="fav(${l.id});show(${l.id})">${FV.has(l.id)?'♥ Saved':'♡ Save'}</button>${own?`${prof?.verified&&!isSp(l)?`<button class="btn w" onclick="promoM(${l.id})">⭐ Promote this listing</button>`:''}${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}<button class="btn o w" onclick="del(${l.id})">Delete listing</button>`:`<button class="btn w" onclick="chat(${l.id})">💬 Chat about this property</button><button class="btn o w" onclick="bookM(${l.id})">Book an inspection</button>`}${isAdm&&!own?`<button class="btn o w" onclick="del(${l.id})">Delete (admin)</button>`:''}${isAdm&&isSp(l)?`<button class="btn o w" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}${!own?`<button class="btn o w" onclick="reportL(${l.id})">⚠ Report listing or agent</button>`:''}`);
+  openM(`<div class="gal">${med||'<div class="ph2">🏠</div>'}</div><h2>${esc(l.title)}</h2><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><p class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}</p><p>${esc(l.description)}</p>${flip}<p class="mu">Listed by ${esc(l.profiles?.name||'—')} ${vt(l)}</p><button class="btn o w" onclick="fav(${l.id});show(${l.id})">${FV.has(l.id)?'♥ Saved':'♡ Save'}</button>${own?`${prof?.verified&&!isSp(l)?`<button class="btn w" onclick="promoM(${l.id})">⭐ Promote this listing</button>`:''}${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}<button class="btn o w" onclick="del(${l.id})">Delete listing</button>`:`<button class="btn w" onclick="chat(${l.id})">💬 Chat about this property</button><button class="btn o w" onclick="bookM(${l.id})">Book an inspection</button>`}${isAdm&&!own?`<button class="btn o w" onclick="del(${l.id})">Delete (admin)</button>`:''}${isAdm&&isSp(l)?`<button class="btn o w" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}${!own?`<button class="btn o w" onclick="rateM('${l.owner_id}')">⭐ Rate this agent</button>`:''}${!own?`<button class="btn o w" onclick="reportL(${l.id})">⚠ Report listing or agent</button>`:''}`);
 }
 async function del(id){
   if(!confirm('Delete this listing?'))return;
@@ -248,6 +254,7 @@ async function del(id){
 function postM(){
   if(!me)return authM();
   if(!['agent','landlord'].includes(prof?.role)){alert('Only agents and landlords can list properties. Create an account with that role.');return}
+  if(!isAdm&&(prof.kyc_level||0)<1){alert('Complete Basic Verification to start listing (5–10 mins).');return kycM()}
   PG=null;setTimeout(initPin,80);
   openM(`<h2>List a property</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">Publish</button><p id="er" class="er"></p>`);
 }
@@ -289,7 +296,7 @@ async function post(){
     b.textContent='Saving…';
     const c=PG||CC[city];
     const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
-    const {data,error}=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified,role)').single();
+    const {data,error}=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified,role,kyc_level)').single();
     if(error)throw new Error('Could not save listing: '+error.message);
     L.unshift(data);closeM();render();
   }catch(e){
@@ -367,14 +374,14 @@ async function rateM(id){
   if(!me)return authM();
   if(id==me.id)return alert("You can't rate yourself.");
   const {data}=await sb.from('inspection_requests').select('id').eq('inspector_id',id).limit(1);
-  if(!data||!data.length)return alert('Book an inspection with this inspector first, then you can rate them.');
+  if((!data||!data.length)&&!TH.some(t=>t.buyer_id==me.id&&t.owner_id==id))return alert('You can rate someone after you have booked an inspection with them or chatted with them.');
   const mine=(RT[id]||[]).find(x=>x.rater_id==me.id);
   openM(`<h2>Rate this inspector</h2><select id="rs">${[5,4,3,2,1].map(n=>`<option value="${n}"${mine?.stars==n?' selected':''}>${'★'.repeat(n)} ${['','Bad','Poor','Okay','Good','Excellent'][n]}</option>`).join('')}</select><textarea id="rc" rows="3" placeholder="How was the inspection? (optional)">${esc(mine?.comment||'')}</textarea><button class="btn w" onclick="rateSend('${id}')">Submit rating</button><p id="er" class="er"></p>`);
 }
 async function rateSend(id){
   const {error}=await sb.from('ratings').upsert({rater_id:me.id,inspector_id:id,stars:+$('rs').value,comment:$('rc').value.trim().slice(0,200)||null},{onConflict:'rater_id,inspector_id'});
   if(error)return err(error.message);
-  await loadAll();insM();
+  await loadAll();INS.some(i=>i.id==id)?insM():closeM();
 }
 async function chatIns(id){
   if(!me)return authM();
@@ -391,11 +398,10 @@ async function myReqs(){
 /* ---------- admin ---------- */
 async function adminM(t='v'){
   if(!isAdm)return;
-  const tabs=`<div class="tabs">${[['v','Verification'],['p','Sponsored'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
+  const tabs=`<div class="tabs">${[['v','KYC'],['p','Sponsored'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
   let h='';
   if(t=='v'){
-    const {data,error}=await sb.from('verifications').select('*,profiles!user_id(name,role)').eq('status','pending').order('created_at');
-    h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(v=>`<div class="note"><b>${esc(v.profiles?.name)}</b> · ${esc(v.profiles?.role)}<br>Ref: ${esc(v.reg_ref)}<br>Phone: ${esc(v.phone)}<br>${esc(v.note||'')}<div class="row" style="margin-top:8px"><button class="btn" onclick="rv('${v.user_id}',true)">Approve</button><button class="btn o" onclick="rv('${v.user_id}',false)">Reject</button></div></div>`).join('')||'<p class="mu">No pending verification requests.</p>';
+    h=await kycQueue();
   }else if(t=='p'){
     const {data,error}=await sb.from('promo_requests').select('*,listings!listing_id(title),profiles!user_id(name)').eq('status','pending').order('created_at');
     h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(p=>`<div class="note"><b>${esc(p.listings?.title)}</b><br>${esc(p.profiles?.name)} · ${p.days} days · ${p.days==30?'₦15,000':'₦5,000'}<div class="row" style="margin-top:8px"><button class="btn" onclick="pa(${p.id},true)">Paid: activate</button><button class="btn o" onclick="pa(${p.id},false)">Dismiss</button></div></div>`).join('')||'<p class="mu">No pending sponsorship requests.</p>';
@@ -491,7 +497,6 @@ function settingsM(){
 async function saveSet(){
   const name=$('sn').value.trim().slice(0,40),role=$('sr').value,email_alerts=$('se').checked;
   if(!name)return err('Add your name');
-  if(prof.verified&&role!=prof.role&&!confirm('Changing your role removes your Verified badge. You will need to verify again. Continue?'))return;
   const {error}=await sb.from('profiles').update({name,role,email_alerts}).eq('id',me.id);
   if(error)return err(error.message);
   await setUser(me);await loadAll();settingsM();good('Saved ✔');
@@ -579,6 +584,120 @@ window.addEventListener('popstate',()=>{
   if(f){f();setTimeout(()=>{if($('ov').classList.contains('s'))hpush()},0)}
   else closeM();
 });
+
+/* ---------- agent KYC ---------- */
+const ID_T={nin:'NIN slip or card',national_id:'National ID card',passport:'International passport'};
+const KST={none:'Not started',pending:'⏳ Under review',approved:'✔ Approved',rejected:'⚠ Needs changes'};
+let KY={},KQ=[];
+const lvl=p=>p?.kyc_level||0;
+function vb(l){const v=lvl(l.profiles);return v>=2?'<span class="tag r gold">★ Nesta Verified</span>':v==1?'<span class="tag r">✔ Verified</span>':''}
+function vt(l){
+  const p=l.profiles,v=lvl(p),r=RT[l.owner_id]||[],a=r.length?' · ★ '+(r.reduce((x,y)=>x+y.stars,0)/r.length).toFixed(1)+' ('+r.length+')':'';
+  return (v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'(unverified)')+a;
+}
+function joinAgent(){
+  if(!me)return authM(true,'agent');
+  if(prof?.role=='buyer'){alert('Switch your role to Agent or Landlord in Settings first.');return settingsM()}
+  if(!isAdm&&(prof?.kyc_level||0)<1)return kycM();
+  postM();
+}
+async function kycLoad(){
+  const {data}=await sb.from('kyc').select('*').eq('user_id',me.id).maybeSingle();
+  KY=data||{basic_status:'none',full_status:'none'};return KY;
+}
+const kPct=k=>Math.round([k.full_name,k.phone,k.id_path,k.selfie_path,k.address_path,k.cac_path,k.intro_path,k.ref_phone].filter(Boolean).length/8*100);
+async function kycM(msg){
+  if(!me)return authM();
+  const k=await kycLoad(),b=k.basic_status,f=k.full_status,lv=prof?.kyc_level||0,pct=kPct(k),r=RT[me.id]||[];
+  const avg=r.length?(r.reduce((a,x)=>a+x.stars,0)/r.length).toFixed(1):null;
+  const top=msg||(lv<1?'Complete Basic Verification to start listing (5–10 mins)':lv<2?'Complete Full Verification to appear higher in search and receive more leads':'You are a Nesta Verified '+(ROLE[prof.role]||'member')+' ★');
+  const have=p=>p?' ✔ uploaded (pick a file to replace it)':'';
+  let h=`<div class="note"><b>${esc(top)}</b><div class="pbar"><i style="width:${pct}%"></i></div><span class="mu">${pct}% complete · ${avg?'★ '+avg+' ('+r.length+' review'+(r.length==1?'':'s')+')':'No reviews yet'}</span></div>`;
+  h+=`<h3>Step 1 · Basic verification</h3><p class="mu">${KST[b]}${b=='pending'?' · usually approved within a few hours':''}</p>`;
+  if(b=='rejected'&&k.reject_reason)h+=`<p class="er">${esc(k.reject_reason)}</p>`;
+  if(b=='none'||b=='rejected')h+=`<input id="kn" placeholder="Full name (as on your ID)" value="${esc(k.full_name||prof.name)}"><input id="kp" type="tel" placeholder="WhatsApp number e.g. 0803 123 4567" value="${esc(k.phone||'')}"><select id="kt">${Object.entries(ID_T).map(([v,t])=>`<option value="${v}"${k.id_type==v?' selected':''}>${t}</option>`).join('')}</select><label class="mu">Photo of your ID${have(k.id_path)}</label><input id="ki" type="file" accept="image/*"><label class="mu">Live selfie, or a selfie holding your ID${have(k.selfie_path)}</label><input id="ks" type="file" accept="image/*" capture="user"><label class="mu" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="kc" style="width:auto;margin-top:4px"> I agree that Nesta may use my ID and selfie only to verify me. They are stored privately and only Nesta's review team can open them.</label><button class="btn w" id="kb" onclick="kycBasic()">Submit Basic KYC</button><p id="er" class="er"></p>`;
+  h+=`<h3>Step 2 · Full verification ${lv>=1?'':'🔒'}</h3>`;
+  if(lv<1)h+='<p class="mu">Finish Basic verification first. Full verification unlocks the gold badge and higher placement.</p>';
+  else{
+    h+=`<p class="mu">${KST[f]}</p>`;
+    if(f=='rejected'&&k.reject_reason)h+=`<p class="er">${esc(k.reject_reason)}</p>`;
+    if(f=='none'||f=='rejected')h+=`<label class="mu">Proof of address (utility bill or bank statement)${have(k.address_path)}</label><input id="ka" type="file" accept="image/*,application/pdf"><label class="mu">CAC or Business Name document (optional, boosts ranking)${have(k.cac_path)}</label><input id="kcac" type="file" accept="image/*,application/pdf"><label class="mu">30-second video intro or voice note (optional)${have(k.intro_path)}</label><input id="kv" type="file" accept="video/*,audio/*"><input id="kr" type="tel" placeholder="Past client phone number (optional)" value="${esc(k.ref_phone||'')}"><button class="btn w" id="kfb" onclick="kycFull()">Submit Full Verification</button><p id="er" class="er"></p>`;
+    else if(f=='approved')h+='<p>You have the <b style="color:var(--ac)">★ Nesta Verified</b> gold badge and rank higher in search.</p>';
+  }
+  openF('🪪 Verification',h,accM);
+}
+function shrink(f){
+  return new Promise((res,rej)=>{
+    const im=new Image(),u=URL.createObjectURL(f);
+    im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error('Could not read the image')),'image/jpeg',.82)};
+    im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('Could not read that image. Try a JPG or PNG.'))};
+    im.src=u;
+  });
+}
+async function kUp(f,kind){
+  let blob=f,ext=(f.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'bin',ct=f.type;
+  if((f.type||'').startsWith('image/')){blob=await shrink(f);ext='jpg';ct='image/jpeg'}
+  else if(f.size>40e6)throw new Error('File too large (max 40MB)');
+  const path=`${me.id}/${kind}-${Date.now()}.${ext}`;
+  const {error}=await sb.storage.from('kyc-docs').upload(path,blob,{contentType:ct||'application/octet-stream'});
+  if(error)throw error;return path;
+}
+async function kSave(fields){
+  if(KY.user_id){const r=await sb.from('kyc').update(fields).eq('user_id',me.id);if(r.error)throw r.error}
+  else{const r=await sb.from('kyc').insert({user_id:me.id,...fields});if(r.error)throw r.error}
+}
+async function kycBasic(){
+  const full_name=$('kn').value.trim().slice(0,80),phone=$('kp').value.replace(/[^\d+]/g,''),id_type=$('kt').value,fi=$('ki').files[0],fs=$('ks').files[0];
+  if(full_name.length<3)return err('Enter your full name');
+  if(phone.replace(/\D/g,'').length<10)return err('Enter a valid WhatsApp phone number');
+  if(!fi&&!KY.id_path)return err('Upload a photo of your ID');
+  if(!fs&&!KY.selfie_path)return err('Take a selfie');
+  if(!$('kc').checked)return err('Please tick the consent box');
+  const b=$('kb');b.disabled=true;b.textContent='Uploading…';
+  try{
+    const fields={full_name,phone,id_type};
+    if(fi)fields.id_path=await kUp(fi,'id');
+    if(fs)fields.selfie_path=await kUp(fs,'selfie');
+    await kSave(fields);
+    const r=await sb.rpc('submit_kyc',{lvl:1});if(r.error)throw r.error;
+    kycM('Submitted ✔ Status: Under Review. Usually approved within a few hours.');
+  }catch(e){err(e.message||String(e));b.disabled=false;b.textContent='Submit Basic KYC'}
+}
+async function kycFull(){
+  const fa=$('ka').files[0],fc=$('kcac').files[0],fv=$('kv').files[0],ref=$('kr').value.replace(/[^\d+]/g,'');
+  if(!fa&&!KY.address_path)return err('Upload your proof of address');
+  const b=$('kfb');b.disabled=true;b.textContent='Uploading…';
+  try{
+    const fields={};
+    if(fa)fields.address_path=await kUp(fa,'address');
+    if(fc)fields.cac_path=await kUp(fc,'cac');
+    if(fv)fields.intro_path=await kUp(fv,'intro');
+    if(ref)fields.ref_phone=ref;
+    if(Object.keys(fields).length)await kSave(fields);
+    const r=await sb.rpc('submit_kyc',{lvl:2});if(r.error)throw r.error;
+    kycM('Submitted ✔ Full verification is under review.');
+  }catch(e){err(e.message||String(e));b.disabled=false;b.textContent='Submit Full Verification'}
+}
+async function kycQueue(){
+  const {data,error}=await sb.from('kyc').select('*,profiles!user_id(name,role)').or('basic_status.eq.pending,full_status.eq.pending').order('basic_submitted_at');
+  if(error)return `<p class="er">${esc(error.message)}</p>`;
+  const rows=data||[],paths=[...new Set(rows.flatMap(k=>[k.id_path,k.selfie_path,k.address_path,k.cac_path,k.intro_path]).filter(Boolean))],su={};
+  if(paths.length){const r=await sb.storage.from('kyc-docs').createSignedUrls(paths,900);(r.data||[]).forEach(x=>{if(x.signedUrl)su[x.path]=x.signedUrl})}
+  KQ=rows;
+  const link=(p,l)=>p&&su[p]?`<a href="${su[p]}" target="_blank" rel="noopener">${l}</a> `:'';
+  const img=p=>p&&su[p]?`<a href="${su[p]}" target="_blank" rel="noopener"><img src="${su[p]}" style="width:48%;border-radius:8px"></a> `:'';
+  return rows.map((k,i)=>{
+    const lv=k.basic_status=='pending'?1:2,wa='https://wa.me/'+String(k.phone||'').replace(/\D/g,'');
+    return `<div class="note"><b>${esc(k.full_name)}</b> · ${esc(k.profiles?.role)} · <b>${lv==1?'Basic':'Full'} review</b><br>📱 ${esc(k.phone)} · <a href="${wa}" target="_blank" rel="noopener">Open WhatsApp</a><br>ID type: ${esc(ID_T[k.id_type]||'')}<br>${lv==1?img(k.id_path)+img(k.selfie_path):link(k.address_path,'Proof of address')+link(k.cac_path,'CAC / business doc')+link(k.intro_path,'Intro video / voice')+'<br>Past client: '+esc(k.ref_phone||'none')}<div class="row" style="margin-top:8px"><button class="btn" onclick="kreview(${i},${lv},true)">Approve</button><button class="btn o" onclick="kreview(${i},${lv},false)">Reject</button></div></div>`;
+  }).join('')||'<p class="mu">No pending verifications.</p>';
+}
+async function kreview(i,lv,ok){
+  const k=KQ[i];let reason=null;
+  if(!ok){reason=prompt('Reason for rejecting (the person will see this)');if(reason===null)return}
+  const {error}=await sb.rpc('review_kyc',{uid:k.user_id,lvl:lv,approve:ok,reason});
+  if(error)return alert(error.message);
+  await loadAll();adminM('v');
+}
 
 loadAll();
 </script>
