@@ -87,6 +87,7 @@ const N=n=>'₦'+Number(n).toLocaleString('en-NG');
 const mu=p=>sb.storage.from('listing-media').getPublicUrl(p).data.publicUrl;
 const CC={Lagos:[6.5244,3.3792],Abuja:[9.0765,7.3986],'Port Harcourt':[4.8156,7.0498],Ibadan:[7.3775,3.947],Kano:[12.0022,8.592],Enugu:[6.4584,7.5464],Accra:[5.6037,-0.187],Nairobi:[-1.2921,36.8219]};
 const ROLE={buyer:'Buyer / Renter',agent:'Agent',landlord:'Landlord',inspector:'Inspector'};
+const MAPLIB=window.L;
 let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],mode='all',vo=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
 $('city').insertAdjacentHTML('beforeend',Object.keys(CC).map(c=>`<option>${c}</option>`).join(''));
 
@@ -107,7 +108,7 @@ async function setUser(u){
 }
 async function loadAll(){
   const [a,b,c]=await Promise.all([
-    sb.from('listings').select('*,profiles(name,verified)').order('created_at',{ascending:false}).limit(200),
+    sb.from('listings').select('*,profiles!owner_id(name,verified)').order('created_at',{ascending:false}).limit(200),
     sb.from('promotions').select('*'),
     sb.from('profiles').select('id,name,verified').eq('role','inspector')]);
   if(a.error){$('grid').innerHTML='<div class="empty">Could not load listings: '+esc(a.error.message)+'</div>';return}
@@ -149,13 +150,13 @@ function drawMap(r){
   if(view!='map'){el.style.display='none';return}
   el.style.display='block';
   if(!map){
-    map=L.map('map').setView([9.08,8.67],6);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
-    layer=L.layerGroup().addTo(map);
+    map=MAPLIB.map('map').setView([9.08,8.67],6);
+    MAPLIB.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+    layer=MAPLIB.layerGroup().addTo(map);
   }
   layer.clearLayers();const pts=[];
   r.filter(l=>l.lat!=null).forEach(l=>{
-    L.circleMarker([l.lat,l.lng],{radius:10,color:'#fff',weight:2,fillColor:isSp(l)?'#c8832a':'#8b4a2b',fillOpacity:1}).addTo(layer).bindTooltip(N(l.price)).on('click',()=>show(l.id));
+    MAPLIB.circleMarker([l.lat,l.lng],{radius:10,color:'#fff',weight:2,fillColor:isSp(l)?'#c8832a':'#8b4a2b',fillOpacity:1}).addTo(layer).bindTooltip(N(l.price)).on('click',()=>show(l.id));
     pts.push([l.lat,l.lng]);
   });
   setTimeout(()=>{map.invalidateSize();if(near)pts.push(near);if(pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:14})},60);
@@ -221,21 +222,31 @@ function geo(){
   navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{PG=[p.coords.latitude,p.coords.longitude];$('pg').textContent='📍 Location saved'},()=>$('pg').textContent='Could not get location. The city centre will be used.'):0;
 }
 async function post(){
-  const title=$('pt').value.trim(),price=+$('pp').value,city=$('pc').value;
-  if(title.length<3||!price)return err('Add a title and price');
-  const b=$('ps');b.disabled=true;b.textContent='Uploading…';
-  const files=[...$('pf').files].slice(0,5),media=[];
-  for(let i=0;i<files.length;i++){
-    const f=files[i],ext=(f.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'bin',path=`${me.id}/${Date.now()}-${i}.${ext}`;
-    const {error}=await sb.storage.from('listing-media').upload(path,f,{contentType:f.type});
-    if(error){err('Upload failed: '+error.message);b.disabled=false;b.textContent='Publish';return}
-    media.push({path,kind:f.type.startsWith('video')?'video':'image'});
+  err('');
+  const b=$('ps');
+  try{
+    const title=$('pt').value.trim(),price=parseFloat(String($('pp').value).replace(/[^0-9.]/g,'')),city=$('pc').value;
+    if(title.length<3)return err('Add a title (at least 3 characters)');
+    if(!price||price<=0)return err('Add a price in numbers, e.g. 2000000');
+    b.disabled=true;b.textContent='Publishing…';
+    const files=[...$('pf').files].slice(0,5),media=[];
+    for(let i=0;i<files.length;i++){
+      const f=files[i],ext=(f.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'bin',path=`${me.id}/${Date.now()}-${i}.${ext}`;
+      b.textContent='Uploading '+(i+1)+' of '+files.length+'…';
+      const {error}=await sb.storage.from('listing-media').upload(path,f,{contentType:f.type||'image/jpeg'});
+      if(error)throw new Error('Photo upload failed: '+error.message);
+      media.push({path,kind:(f.type||'').startsWith('video')?'video':'image'});
+    }
+    b.textContent='Saving…';
+    const c=PG||CC[city];
+    const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
+    const {data,error}=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified)').single();
+    if(error)throw new Error('Could not save listing: '+error.message);
+    L.unshift(data);closeM();render();
+  }catch(e){
+    err(String(e&&e.message||e));
+    b.disabled=false;b.textContent='Publish';
   }
-  const c=PG||CC[city];
-  const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:+$('pb').value||0,lat:c[0],lng:c[1],arv:+$('pv').value||null,repair:+$('pr').value||null,media};
-  const {data,error}=await sb.from('listings').insert(row).select('*,profiles(name,verified)').single();
-  if(error){err(error.message);b.disabled=false;b.textContent='Publish';return}
-  L.unshift(data);closeM();render();
 }
 
 /* ---------- inspections + promotion ---------- */
