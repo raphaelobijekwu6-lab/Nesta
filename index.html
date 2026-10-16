@@ -4,10 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Nesta – Find your nest</title>
+<script>try{var t=localStorage.getItem('nesta-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <style>
 :root{--bg:#f4ead9;--card:#fffaf1;--tx:#3b2417;--mu:#7a6250;--br:#e2d3ba;--pr:#8b4a2b;--pr2:#f0dfc6;--ac:#c8832a;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#1e1510;--card:#2a1d15;--tx:#f3e7d3;--mu:#bfa88c;--br:#4a3628;--pr:#d99061;--pr2:#3a2a1e;--ac:#e0a040;--on:#2a160c}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1510;--card:#2a1d15;--tx:#f3e7d3;--mu:#bfa88c;--br:#4a3628;--pr:#d99061;--pr2:#3a2a1e;--ac:#e0a040;--on:#2a160c}}
+:root[data-theme="dark"]{--bg:#1e1510;--card:#2a1d15;--tx:#f3e7d3;--mu:#bfa88c;--br:#4a3628;--pr:#d99061;--pr2:#3a2a1e;--ac:#e0a040;--on:#2a160c}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom,0px)}
 .w0{max-width:1000px;margin:0 auto;padding:0 16px}
@@ -61,6 +63,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
 .cact{display:flex;gap:8px;padding:0 12px 12px}.cact button{flex:1;padding:8px;font-size:14px}
 .bdg{position:absolute;top:-7px;right:-7px;background:#c53030;color:#fff;border-radius:99px;font-size:11px;min-width:18px;padding:1px 5px;display:none;line-height:1.4;font-weight:700}
 .toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;right:12px;max-width:520px;margin:0 auto;background:var(--pr);color:var(--on);padding:12px 14px;border-radius:12px;z-index:10000;box-shadow:0 6px 20px #0006;cursor:pointer;display:none}
+.mo h3{margin:16px 0 6px;font-family:Georgia,serif}footer a{color:var(--pr);cursor:pointer;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -78,7 +81,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
 </section>
 <div id="map"></div>
 <div class="grid" id="grid"><div class="empty">Loading…</div></div>
-<footer>Nesta · early test version</footer>
+<footer>Nesta · early test version · <a onclick="me?careM():authM()">🛟 Customer care</a></footer>
 </div>
 <div class="ov" id="ov" onclick="if(event.target===this)closeM()"><div class="mo" id="mo"></div></div>
 
@@ -101,7 +104,8 @@ $('city').insertAdjacentHTML('beforeend',stOpts());
 
 const isSp=l=>PM[l.id]>Date.now();
 const km=(a,b)=>{const r=x=>x*Math.PI/180,d=r(b[0]-a[0]),e=r(b[1]-a[1]),h=Math.sin(d/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(e/2)**2;return 12742*Math.asin(Math.sqrt(h))};
-function err(m){const e=$('er');if(e)e.textContent=m}
+function err(m){const e=$('er');if(e){e.textContent=m;e.style.color=''}}
+function good(m){const e=$('er');if(e){e.textContent=m;e.style.color='#2f855a'}}
 
 /* ---------- data ---------- */
 sb.auth.onAuthStateChange((_e,s)=>{setTimeout(()=>setUser(s?.user||null),0)});
@@ -119,7 +123,7 @@ async function setUser(u){
 }
 async function loadAll(){
   const [a,b,c,d]=await Promise.all([
-    sb.from('listings').select('*,profiles!owner_id(name,verified)').order('created_at',{ascending:false}).limit(200),
+    sb.from('listings').select('*,profiles!owner_id(name,verified,role)').order('created_at',{ascending:false}).limit(200),
     sb.from('promotions').select('*'),
     sb.from('profiles').select('id,name,verified').eq('role','inspector'),
     sb.from('ratings').select('*')]);
@@ -193,7 +197,7 @@ async function doAuth(up){
 }
 function accM(){
   const v=prof?.verified;
-  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'&&!v?'<button class="btn o w" onclick="verM()">Get verified</button>':''}${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'&&!v?'<button class="btn o w" onclick="verM()">Get verified</button>':''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
 }
 async function out(){await sb.auth.signOut();closeM()}
 function verM(){
@@ -217,7 +221,7 @@ function show(id){
   const med=(l.media||[]).map(m=>m.kind=='video'?`<video src="${mu(m.path)}" controls playsinline></video>`:`<img src="${mu(m.path)}" alt="">`).join('');
   const flip=l.mode=='flip'&&l.arv?`<div class="note"><b>Flip estimate</b><br>Buy ${N(l.price)} + repairs ${N(l.repair||0)} → resell ${N(l.arv)}<br><b>Potential profit: ${N(l.arv-l.price-(l.repair||0))}</b> <span class="mu">(estimate only)</span></div>`:'';
   const own=me&&l.owner_id==me.id;
-  openM(`<div class="gal">${med||'<div class="ph2">🏠</div>'}</div><h2>${esc(l.title)}</h2><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><p class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}</p><p>${esc(l.description)}</p>${flip}<p class="mu">Listed by ${esc(l.profiles?.name||'—')} ${l.profiles?.verified?'<b class="ok">✔ Verified</b>':'(unverified)'}</p><button class="btn o w" onclick="fav(${l.id});show(${l.id})">${FV.has(l.id)?'♥ Saved':'♡ Save'}</button>${own?`${prof?.verified&&!isSp(l)?`<button class="btn w" onclick="promoM(${l.id})">⭐ Promote this listing</button>`:''}${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}<button class="btn o w" onclick="del(${l.id})">Delete listing</button>`:`<button class="btn w" onclick="chat(${l.id})">💬 Chat about this property</button><button class="btn o w" onclick="bookM(${l.id})">Book an inspection</button>`}${isAdm&&!own?`<button class="btn o w" onclick="del(${l.id})">Delete (admin)</button>`:''}${isAdm&&isSp(l)?`<button class="btn o w" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}`);
+  openM(`<div class="gal">${med||'<div class="ph2">🏠</div>'}</div><h2>${esc(l.title)}</h2><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><p class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}</p><p>${esc(l.description)}</p>${flip}<p class="mu">Listed by ${esc(l.profiles?.name||'—')} ${l.profiles?.verified?'<b class="ok">✔ Verified</b>':'(unverified)'}</p><button class="btn o w" onclick="fav(${l.id});show(${l.id})">${FV.has(l.id)?'♥ Saved':'♡ Save'}</button>${own?`${prof?.verified&&!isSp(l)?`<button class="btn w" onclick="promoM(${l.id})">⭐ Promote this listing</button>`:''}${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}<button class="btn o w" onclick="del(${l.id})">Delete listing</button>`:`<button class="btn w" onclick="chat(${l.id})">💬 Chat about this property</button><button class="btn o w" onclick="bookM(${l.id})">Book an inspection</button>`}${isAdm&&!own?`<button class="btn o w" onclick="del(${l.id})">Delete (admin)</button>`:''}${isAdm&&isSp(l)?`<button class="btn o w" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}${!own?`<button class="btn o w" onclick="reportL(${l.id})">⚠ Report listing or agent</button>`:''}`);
 }
 async function del(id){
   if(!confirm('Delete this listing?'))return;
@@ -268,7 +272,7 @@ async function post(){
     b.textContent='Saving…';
     const c=PG||CC[city];
     const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
-    const {data,error}=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified)').single();
+    const {data,error}=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified,role)').single();
     if(error)throw new Error('Could not save listing: '+error.message);
     L.unshift(data);closeM();render();
   }catch(e){
@@ -370,7 +374,7 @@ async function myReqs(){
 /* ---------- admin ---------- */
 async function adminM(t='v'){
   if(!isAdm)return;
-  const tabs=`<div class="tabs">${[['v','Verification'],['p','Sponsored'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
+  const tabs=`<div class="tabs">${[['v','Verification'],['p','Sponsored'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
   let h='';
   if(t=='v'){
     const {data,error}=await sb.from('verifications').select('*,profiles!user_id(name,role)').eq('status','pending').order('created_at');
@@ -378,6 +382,9 @@ async function adminM(t='v'){
   }else if(t=='p'){
     const {data,error}=await sb.from('promo_requests').select('*,listings!listing_id(title),profiles!user_id(name)').eq('status','pending').order('created_at');
     h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(p=>`<div class="note"><b>${esc(p.listings?.title)}</b><br>${esc(p.profiles?.name)} · ${p.days} days · ${p.days==30?'₦15,000':'₦5,000'}<div class="row" style="margin-top:8px"><button class="btn" onclick="pa(${p.id},true)">Paid: activate</button><button class="btn o" onclick="pa(${p.id},false)">Dismiss</button></div></div>`).join('')||'<p class="mu">No pending sponsorship requests.</p>';
+  }else if(t=='c'){
+    const {data,error}=await sb.from('complaints').select('*,reporter:profiles!user_id(name,role),about:profiles!about_user(name,role),listings!listing_id(title)').neq('status','resolved').order('created_at');
+    h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(c=>`<div class="note"><b>#${c.id} · ${esc(c.subject)}</b> · ${esc(KINDS[c.kind]||c.kind)} · ${esc(c.status)}<br>From: ${esc(c.reporter?.name)} (${esc(c.reporter?.role)})${c.about?`<br>About: ${esc(c.about.name)} (${esc(c.about.role)})`:''}${c.listings?`<br>Listing: ${esc(c.listings.title)}`:''}<br>${esc(c.message)}${c.admin_note?`<br><b>Note:</b> ${esc(c.admin_note)}`:''}<div class="row" style="margin-top:8px"><button class="btn o" onclick="cm(${c.id},'in_review')">In review</button><button class="btn" onclick="cm(${c.id},'resolved')">Resolve</button></div></div>`).join('')||'<p class="mu">No open complaints 🎉</p>';
   }else{
     const {data,error}=await sb.from('inspection_requests').select('*,listings!listing_id(title),profiles!inspector_id(name)').order('created_at',{ascending:false}).limit(30);
     h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(r=>`<div class="note"><b>${esc(r.listings?.title||'Listing')}</b><br>${esc(r.name)} · ${esc(r.phone)}<br>${r.preferred_date?esc(r.preferred_date):'No date'} · Inspector: ${esc(r.profiles?.name||'any')}</div>`).join('')||'<p class="mu">No inspection requests yet.</p>';
@@ -396,7 +403,7 @@ function cact(l){
 function chatTitle(id){
   const t=TH.find(x=>x.id==id);if(!t)return 'Chat';
   const o=t.buyer_id==me.id?t.owner_id:t.buyer_id;
-  return esc(t.listings?.title||'Inspector chat')+' <span class="mu">· '+esc(NM[o]||'')+'</span>';
+  return esc(t.listings?.title||'Inspector chat')+' <span class="mu">· '+esc(NM[o]||'')+'</span><br><a class="mu" style="font-size:13px;cursor:pointer;text-decoration:underline" onclick="reportT('+id+')">⚠ Report this person</a>';
 }
 function unrFor(tid){const r=RD[tid]||0;return MG.filter(m=>m.thread_id==tid&&m.sender_id!=me.id&&new Date(m.created_at).getTime()>r).length}
 function unrTotal(){return me?TH.reduce((a,t)=>a+unrFor(t.id),0):0}
@@ -443,6 +450,86 @@ function toast(t,tid){
   clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',7000);
 }
 function askNotif(){Notification.requestPermission().then(()=>inbox())}
+
+/* ---------- settings ---------- */
+function themeSet(t){
+  try{t?localStorage.setItem('nesta-theme',t):localStorage.removeItem('nesta-theme')}catch(e){}
+  t?document.documentElement.setAttribute('data-theme',t):document.documentElement.removeAttribute('data-theme');
+  settingsM();
+}
+function settingsM(){
+  if(!me)return authM();
+  const th=document.documentElement.getAttribute('data-theme')||'';
+  openM(`<h2>Settings</h2><p class="mu">${esc(me.email||'')}</p>
+  <label class="mu">Name</label><input id="sn" value="${esc(prof?.name||'')}">
+  <label class="mu">I am a…</label><select id="sr">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}"${prof?.role==k?' selected':''}>${v}</option>`).join('')}</select>
+  <label class="mu" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="se" style="width:auto;margin:0" ${prof?.email_alerts!==false?'checked':''}> Email me about new messages</label>
+  <button class="btn w" onclick="saveSet()">Save changes</button><p id="er" class="er"></p>
+  <h3>Appearance</h3><div class="row">${[['','Auto'],['light','☀️ Light'],['dark','🌙 Dark']].map(([k,v])=>`<button class="btn${th==k?'':' o'}" onclick="themeSet('${k}')">${v}</button>`).join('')}</div>
+  <h3>Alerts</h3><button class="btn o w" onclick="alertsOn()">🔔 Browser alerts</button>
+  <h3>Password</h3><input id="sp" type="password" placeholder="New password (6+ characters)" autocomplete="new-password"><button class="btn o w" onclick="newPw()">Change password</button><p id="er2" class="er"></p>
+  <h3>Help</h3><button class="btn o w" onclick="careM()">🛟 Customer care</button><button class="btn o w" onclick="myComplaints()">My complaints</button>
+  <button class="btn o w" style="margin-top:14px" onclick="out()">Sign out</button>`);
+}
+async function saveSet(){
+  const name=$('sn').value.trim().slice(0,40),role=$('sr').value,email_alerts=$('se').checked;
+  if(!name)return err('Add your name');
+  if(prof.verified&&role!=prof.role&&!confirm('Changing your role removes your Verified badge. You will need to verify again. Continue?'))return;
+  const {error}=await sb.from('profiles').update({name,role,email_alerts}).eq('id',me.id);
+  if(error)return err(error.message);
+  await setUser(me);await loadAll();settingsM();good('Saved ✔');
+}
+async function newPw(){
+  const pw=$('sp').value,e=$('er2');
+  if(pw.length<6){e.textContent='Use at least 6 characters';return}
+  const {error}=await sb.auth.updateUser({password:pw});
+  e.textContent=error?error.message:'Password changed ✔';e.style.color=error?'':'#2f855a';
+}
+function alertsOn(){
+  if(!window.Notification)return alert('This browser cannot show alerts here. On iPhone, add Nesta to your Home Screen first.');
+  Notification.requestPermission().then(p=>alert(p=='granted'?'Alerts are on while Nesta is open in the background.':'Alerts are blocked. Allow notifications for this site in your browser settings.'));
+}
+
+/* ---------- customer care ---------- */
+const KINDS={page:'Problem with the website',agent:'Report an agent',landlord:'Report a landlord',inspector:'Report an inspector',buyer:'Report a buyer / renter',other:'Something else'};
+let CC0={};
+function careM(ctx){
+  if(!me)return authM();
+  CC0=ctx||{};
+  openM(`<h2>Customer care</h2><p class="mu">Tell us what went wrong. We read every complaint.</p><select id="ck">${Object.entries(KINDS).map(([k,v])=>`<option value="${k}"${k==(CC0.kind||'page')?' selected':''}>${v}</option>`).join('')}</select>${CC0.about||CC0.lid?`<div class="note">About: ${CC0.title?esc(CC0.title)+' · ':''}${esc(CC0.aboutName||'')}</div>`:''}<input id="cs" placeholder="Short subject" maxlength="120"><textarea id="cm" rows="5" maxlength="1000" placeholder="What happened? Include dates and details."></textarea><button class="btn w" onclick="careSend()">Send complaint</button><p id="er" class="er"></p><button class="btn o w" onclick="myComplaints()">My complaints</button>`);
+}
+async function careSend(){
+  const subject=$('cs').value.trim(),message=$('cm').value.trim();
+  if(subject.length<3)return err('Add a short subject');
+  if(message.length<5)return err('Please describe what happened');
+  const row={kind:$('ck').value,subject,message};
+  if(CC0.about)row.about_user=CC0.about;if(CC0.lid)row.listing_id=CC0.lid;
+  const {data,error}=await sb.from('complaints').insert(row).select('id').single();
+  if(error)return err(error.message);
+  openM(`<h2>Complaint sent ✔</h2><p>Reference <b>#${data.id}</b>. We will review it and update its status. You can follow it under <b>My complaints</b>.</p><button class="btn w" onclick="myComplaints()">My complaints</button><button class="btn o w" onclick="closeM()">Done</button>`);
+}
+async function myComplaints(){
+  const {data,error}=await sb.from('complaints').select('*').eq('user_id',me.id).order('created_at',{ascending:false}).limit(30);
+  const st={open:'🟡 Open',in_review:'🔵 In review',resolved:'🟢 Resolved'};
+  openM('<h2>My complaints</h2>'+(error?`<p class="er">${esc(error.message)}</p>`:(data||[]).length?data.map(c=>`<div class="note"><b>#${c.id} · ${esc(c.subject)}</b><br>${st[c.status]||esc(c.status)} · ${esc(KINDS[c.kind]||c.kind)}<br>${esc(c.message.slice(0,140))}${c.admin_note?`<br><b>Reply:</b> ${esc(c.admin_note)}`:''}</div>`).join(''):'<p class="mu">You have not filed any complaints.</p>')+'<button class="btn w" onclick="careM()">New complaint</button>');
+}
+function reportL(id){
+  const l=L.find(x=>x.id==id);if(!l)return;
+  const r=l.profiles?.role;
+  careM({lid:id,about:l.owner_id,aboutName:l.profiles?.name,title:l.title,kind:['agent','landlord'].includes(r)?r:'other'});
+}
+function reportT(id){
+  const t=TH.find(x=>x.id==id);if(!t)return;
+  const o=t.buyer_id==me.id?t.owner_id:t.buyer_id;
+  careM({about:o,aboutName:NM[o],kind:'other'});
+}
+async function cm(id,status){
+  const note=prompt('Note for the user (optional)');if(note===null)return;
+  const upd={status};if(note.trim())upd.admin_note=note.trim().slice(0,300);
+  const {error}=await sb.from('complaints').update(upd).eq('id',id);
+  if(error)return alert(error.message);
+  adminM('c');
+}
 
 loadAll();
 </script>
