@@ -56,6 +56,8 @@ input,select,textarea{width:100%;padding:10px;margin:5px 0;border:1px solid var(
 .me span{background:var(--pr);color:var(--on)}
 .empty{grid-column:1/-1;text-align:center;color:var(--mu);padding:30px 10px}
 footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
+.pin{font-size:30px;line-height:1;filter:drop-shadow(0 2px 2px #0006)}
+#pmap{height:240px;border-radius:12px;border:1px solid var(--br);margin:8px 0}
 </style>
 </head>
 <body>
@@ -65,7 +67,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
 <h1>Find your nest. Inspect without the stress.</h1>
 <p class="sub">Verified listings across Nigeria &amp; Africa, fair-priced inspections, and flip deals you can earn from.</p>
 <div class="bar">
-<select id="city" onchange="render()"><option value="">All cities</option></select>
+<select id="city" onchange="render()"><option value="">All states</option></select>
 <select id="type" onchange="render()"><option value="">Any type</option><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select>
 <input id="max" type="number" placeholder="Max price ₦" oninput="render()">
 </div>
@@ -85,11 +87,14 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const N=n=>'₦'+Number(n).toLocaleString('en-NG');
 const mu=p=>sb.storage.from('listing-media').getPublicUrl(p).data.publicUrl;
-const CC={Lagos:[6.5244,3.3792],Abuja:[9.0765,7.3986],'Port Harcourt':[4.8156,7.0498],Ibadan:[7.3775,3.947],Kano:[12.0022,8.592],Enugu:[6.4584,7.5464],Accra:[5.6037,-0.187],Nairobi:[-1.2921,36.8219]};
+const NGS={"Abia": [5.5265, 7.4906], "Adamawa": [9.2035, 12.4954], "Akwa Ibom": [5.0377, 7.9128], "Anambra": [6.21, 7.07], "Bauchi": [10.3158, 9.8442], "Bayelsa": [4.9267, 6.2676], "Benue": [7.7337, 8.5214], "Borno": [11.8333, 13.15], "Cross River": [4.9757, 8.3417], "Delta": [6.198, 6.733], "Ebonyi": [6.3249, 8.1137], "Edo": [6.335, 5.6037], "Ekiti": [7.6211, 5.2215], "Enugu": [6.4584, 7.5464], "FCT Abuja": [9.0765, 7.3986], "Gombe": [10.2897, 11.1673], "Imo": [5.4836, 7.0333], "Jigawa": [11.7561, 9.3388], "Kaduna": [10.5105, 7.4165], "Kano": [12.0022, 8.592], "Katsina": [12.9908, 7.6018], "Kebbi": [12.4539, 4.1975], "Kogi": [7.8023, 6.7333], "Kwara": [8.4966, 4.5421], "Lagos": [6.5244, 3.3792], "Nasarawa": [8.4939, 8.5153], "Niger": [9.6139, 6.5569], "Ogun": [7.1475, 3.3619], "Ondo": [7.2571, 5.2058], "Osun": [7.7827, 4.5418], "Oyo": [7.3775, 3.947], "Plateau": [9.8965, 8.8583], "Rivers": [4.8156, 7.0498], "Sokoto": [13.0059, 5.2476], "Taraba": [8.8937, 11.3596], "Yobe": [11.747, 11.9608], "Zamfara": [12.1704, 6.6641]};
+const OTH={Accra:[5.6037,-0.187],Nairobi:[-1.2921,36.8219]};
+const CC={...NGS,...OTH};
+const stOpts=()=>'<optgroup label="Nigeria">'+Object.keys(NGS).map(c=>`<option>${c}</option>`).join('')+'</optgroup><optgroup label="Other countries">'+Object.keys(OTH).map(c=>`<option>${c}</option>`).join('')+'</optgroup>';
 const ROLE={buyer:'Buyer / Renter',agent:'Agent',landlord:'Landlord',inspector:'Inspector'};
 const MAPLIB=window.L;
-let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],mode='all',vo=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
-$('city').insertAdjacentHTML('beforeend',Object.keys(CC).map(c=>`<option>${c}</option>`).join(''));
+let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],RT={},isAdm=false,pmap=null,pmk=null,mode='all',vo=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
+$('city').insertAdjacentHTML('beforeend',stOpts());
 
 const isSp=l=>PM[l.id]>Date.now();
 const km=(a,b)=>{const r=x=>x*Math.PI/180,d=r(b[0]-a[0]),e=r(b[1]-a[1]),h=Math.sin(d/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(e/2)**2;return 12742*Math.asin(Math.sqrt(h))};
@@ -98,21 +103,23 @@ function err(m){const e=$('er');if(e)e.textContent=m}
 /* ---------- data ---------- */
 sb.auth.onAuthStateChange((_e,s)=>{setTimeout(()=>setUser(s?.user||null),0)});
 async function setUser(u){
-  me=u;prof=null;FV=new Set();
+  me=u;prof=null;FV=new Set();isAdm=false;
   if(me){
     const p=await sb.from('profiles').select('*').eq('id',me.id).single();prof=p.data;
     const f=await sb.from('favorites').select('listing_id');FV=new Set((f.data||[]).map(r=>r.listing_id));
+    const a=await sb.rpc('is_admin');isAdm=a.data===true;
   }
   $('acb').textContent=prof?'👤 '+prof.name.split(' ')[0]:'Sign in';
   render();
 }
 async function loadAll(){
-  const [a,b,c]=await Promise.all([
+  const [a,b,c,d]=await Promise.all([
     sb.from('listings').select('*,profiles!owner_id(name,verified)').order('created_at',{ascending:false}).limit(200),
     sb.from('promotions').select('*'),
-    sb.from('profiles').select('id,name,verified').eq('role','inspector')]);
+    sb.from('profiles').select('id,name,verified').eq('role','inspector'),
+    sb.from('ratings').select('*')]);
   if(a.error){$('grid').innerHTML='<div class="empty">Could not load listings: '+esc(a.error.message)+'</div>';return}
-  L=a.data||[];PM={};(b.data||[]).forEach(p=>PM[p.listing_id]=new Date(p.until).getTime());INS=c.data||[];render();
+  L=a.data||[];PM={};(b.data||[]).forEach(p=>PM[p.listing_id]=new Date(p.until).getTime());INS=c.data||[];RT={};(d.data||[]).forEach(r=>{(RT[r.inspector_id]=RT[r.inspector_id]||[]).push(r)});render();
 }
 
 /* ---------- list + map ---------- */
@@ -136,7 +143,7 @@ function tg(k){
 function render(){
   $('tabs').innerHTML=[['all','All'],['buy','Buy'],['rent','Rent'],['flip','Flip deals']].map(([k,v])=>`<button class="tab${mode==k?' on':''}" onclick="mode='${k}';render()">${v}</button>`).join('')
     +chip('vo','✔ Verified',vo)+chip('sv','♥ Saved',sv)+chip('nr','📍 Near me',!!near)
-    +`<button class="tab${view=='map'?' on':''}" onclick="view=view=='map'?'list':'map';render()">🗺 Map</button>`;
+    +`<button class="tab${view=='map'?' on':''}" onclick="view=view=='map'?'list':'map';render()">🗺 Map</button><button class="tab" onclick="insM()">🔎 Inspectors</button>`;
   const r=list();
   $('grid').innerHTML=r.length?r.map(card).join(''):'<div class="empty">No listings yet. Agents and landlords can sign up and tap “+ List” to add the first one.</div>';
   drawMap(r);
@@ -163,8 +170,8 @@ function drawMap(r){
 }
 
 /* ---------- modal ---------- */
-function openM(h){$('mo').innerHTML='<button class="x" onclick="closeM()">×</button>'+h;$('ov').classList.add('s')}
-function closeM(){if(ch){sb.removeChannel(ch);ch=null}$('ov').classList.remove('s')}
+function openM(h){if(pmap){pmap.remove();pmap=null}$('mo').innerHTML='<button class="x" onclick="closeM()">×</button>'+h;$('ov').classList.add('s')}
+function closeM(){if(pmap){pmap.remove();pmap=null}if(ch){sb.removeChannel(ch);ch=null}$('ov').classList.remove('s')}
 
 /* ---------- auth + account ---------- */
 function authM(up){
@@ -181,7 +188,7 @@ async function doAuth(up){
 }
 function accM(){
   const v=prof?.verified;
-  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role!='buyer'&&!v?'<button class="btn o w" onclick="verM()">Get verified</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'&&!v?'<button class="btn o w" onclick="verM()">Get verified</button>':''}${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
 }
 async function out(){await sb.auth.signOut();closeM()}
 function verM(){
@@ -205,7 +212,7 @@ function show(id){
   const med=(l.media||[]).map(m=>m.kind=='video'?`<video src="${mu(m.path)}" controls playsinline></video>`:`<img src="${mu(m.path)}" alt="">`).join('');
   const flip=l.mode=='flip'&&l.arv?`<div class="note"><b>Flip estimate</b><br>Buy ${N(l.price)} + repairs ${N(l.repair||0)} → resell ${N(l.arv)}<br><b>Potential profit: ${N(l.arv-l.price-(l.repair||0))}</b> <span class="mu">(estimate only)</span></div>`:'';
   const own=me&&l.owner_id==me.id;
-  openM(`<div class="gal">${med||'<div class="ph2">🏠</div>'}</div><h2>${esc(l.title)}</h2><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><p class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}</p><p>${esc(l.description)}</p>${flip}<p class="mu">Listed by ${esc(l.profiles?.name||'—')} ${l.profiles?.verified?'<b class="ok">✔ Verified</b>':'(unverified)'}</p><button class="btn o w" onclick="fav(${l.id});show(${l.id})">${FV.has(l.id)?'♥ Saved':'♡ Save'}</button>${own?`${prof?.verified&&!isSp(l)?`<button class="btn w" onclick="promoM(${l.id})">⭐ Promote this listing</button>`:''}${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}<button class="btn o w" onclick="del(${l.id})">Delete listing</button>`:`<button class="btn w" onclick="chat(${l.id})">💬 Chat about this property</button><button class="btn o w" onclick="bookM(${l.id})">Book an inspection</button>`}`);
+  openM(`<div class="gal">${med||'<div class="ph2">🏠</div>'}</div><h2>${esc(l.title)}</h2><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><p class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}</p><p>${esc(l.description)}</p>${flip}<p class="mu">Listed by ${esc(l.profiles?.name||'—')} ${l.profiles?.verified?'<b class="ok">✔ Verified</b>':'(unverified)'}</p><button class="btn o w" onclick="fav(${l.id});show(${l.id})">${FV.has(l.id)?'♥ Saved':'♡ Save'}</button>${own?`${prof?.verified&&!isSp(l)?`<button class="btn w" onclick="promoM(${l.id})">⭐ Promote this listing</button>`:''}${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}<button class="btn o w" onclick="del(${l.id})">Delete listing</button>`:`<button class="btn w" onclick="chat(${l.id})">💬 Chat about this property</button><button class="btn o w" onclick="bookM(${l.id})">Book an inspection</button>`}${isAdm&&!own?`<button class="btn o w" onclick="del(${l.id})">Delete (admin)</button>`:''}${isAdm&&isSp(l)?`<button class="btn o w" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}`);
 }
 async function del(id){
   if(!confirm('Delete this listing?'))return;
@@ -215,11 +222,27 @@ async function del(id){
 function postM(){
   if(!me)return authM();
   if(!['agent','landlord'].includes(prof?.role)){alert('Only agents and landlords can list properties. Create an account with that role.');return}
-  PG=null;
-  openM(`<h2>List a property</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc">${Object.keys(CC).map(c=>`<option>${c}</option>`).join('')}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu"></p><label class="mu">Photos / video (up to 5)</label><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">Publish</button><p id="er" class="er"></p>`);
+  PG=null;setTimeout(initPin,80);
+  openM(`<h2>List a property</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">Publish</button><p id="er" class="er"></p>`);
 }
 function geo(){
-  navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{PG=[p.coords.latitude,p.coords.longitude];$('pg').textContent='📍 Location saved'},()=>$('pg').textContent='Could not get location. The city centre will be used.'):0;
+  navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{PG=[p.coords.latitude,p.coords.longitude];if(pmap){pmap.setView(PG,16);pmk.setLatLng(PG)}$('pg').textContent='📍 Location set. Drag the pin to adjust.'},()=>$('pg').textContent='Could not get your location. Drag the pin instead.'):0;
+}
+function initPin(){
+  if(!$('pmap'))return;
+  if(pmap){pmap.remove();pmap=null}
+  const c=CC[$('pc').value];
+  pmap=MAPLIB.map('pmap').setView(c,12);
+  MAPLIB.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(pmap);
+  pmk=MAPLIB.marker(c,{draggable:true,icon:MAPLIB.divIcon({html:'📍',className:'pin',iconSize:[30,30],iconAnchor:[15,28]})}).addTo(pmap);
+  const set=ll=>{PG=[ll.lat,ll.lng];$('pg').textContent='📍 Pin set. Drag to adjust.'};
+  pmk.on('dragend',()=>set(pmk.getLatLng()));
+  pmap.on('click',e=>{pmk.setLatLng(e.latlng);set(e.latlng)});
+  setTimeout(()=>pmap&&pmap.invalidateSize(),150);
+}
+function pcCity(){
+  if(!pmap)return;
+  const c=CC[$('pc').value];pmap.setView(c,12);pmk.setLatLng(c);PG=null;$('pg').textContent='If you skip this, the state capital is used.';
 }
 async function post(){
   err('');
@@ -282,7 +305,7 @@ async function inbox(){
   const T=data||[],ids=[...new Set(T.map(t=>t.buyer_id==me.id?t.owner_id:t.buyer_id))];
   const ps=ids.length?(await sb.from('profiles').select('id,name').in('id',ids)).data||[]:[];
   const nm=Object.fromEntries(ps.map(p=>[p.id,p.name]));
-  openM('<h2>Messages</h2>'+(T.length?T.map(t=>`<div class="note pt" onclick="thread(${t.id})"><b>${esc(t.listings?.title||'Listing')}</b><br>${esc(nm[t.buyer_id==me.id?t.owner_id:t.buyer_id]||'')}</div>`).join(''):'<p class="mu">No conversations yet.</p>'));
+  openM('<h2>Messages</h2>'+(T.length?T.map(t=>`<div class="note pt" onclick="thread(${t.id})"><b>${esc(t.listings?.title||'Inspector chat')}</b><br>${esc(nm[t.buyer_id==me.id?t.owner_id:t.buyer_id]||'')}</div>`).join(''):'<p class="mu">No conversations yet.</p>'));
 }
 async function thread(id){
   if(ch){sb.removeChannel(ch);ch=null}
@@ -301,6 +324,61 @@ async function send(id){
   const {data,error}=await sb.from('messages').insert({thread_id:id,body}).select().single();
   error?alert(error.message):addMsg(data);
 }
+
+/* ---------- inspectors + ratings ---------- */
+function insM(){
+  const rows=INS.map(i=>{
+    const r=RT[i.id]||[],avg=r.length?r.reduce((a,x)=>a+x.stars,0)/r.length:0,k=Math.round(avg);
+    const rev=r.filter(x=>x.comment).slice(-2).map(x=>`<div class="mu">“${esc(x.comment)}”</div>`).join('');
+    return `<div class="note"><b>${esc(i.name)}</b> ${i.verified?'<b class="ok">✔ Verified</b>':''}<br>${r.length?`<span style="color:var(--ac)">${'★'.repeat(k)}${'☆'.repeat(5-k)}</span> ${avg.toFixed(1)} (${r.length})`:'<span class="mu">No ratings yet</span>'}${rev}<div class="row" style="margin-top:8px"><button class="btn" onclick="rateM('${i.id}')">Rate</button><button class="btn o" onclick="chatIns('${i.id}')">Message</button></div></div>`;
+  }).join('');
+  openM(`<h2>Inspectors</h2><p class="mu">Flat-fee inspections. Ratings come from people who booked them.</p>${rows||'<p class="mu">No inspectors yet. Inspectors can create an account with the inspector role.</p>'}`);
+}
+async function rateM(id){
+  if(!me)return authM();
+  if(id==me.id)return alert("You can't rate yourself.");
+  const {data}=await sb.from('inspection_requests').select('id').eq('inspector_id',id).limit(1);
+  if(!data||!data.length)return alert('Book an inspection with this inspector first, then you can rate them.');
+  const mine=(RT[id]||[]).find(x=>x.rater_id==me.id);
+  openM(`<h2>Rate this inspector</h2><select id="rs">${[5,4,3,2,1].map(n=>`<option value="${n}"${mine?.stars==n?' selected':''}>${'★'.repeat(n)} ${['','Bad','Poor','Okay','Good','Excellent'][n]}</option>`).join('')}</select><textarea id="rc" rows="3" placeholder="How was the inspection? (optional)">${esc(mine?.comment||'')}</textarea><button class="btn w" onclick="rateSend('${id}')">Submit rating</button><p id="er" class="er"></p>`);
+}
+async function rateSend(id){
+  const {error}=await sb.from('ratings').upsert({rater_id:me.id,inspector_id:id,stars:+$('rs').value,comment:$('rc').value.trim().slice(0,200)||null},{onConflict:'rater_id,inspector_id'});
+  if(error)return err(error.message);
+  await loadAll();insM();
+}
+async function chatIns(id){
+  if(!me)return authM();
+  if(id==me.id)return alert('That is you.');
+  let {data:t}=await sb.from('threads').select('id').is('listing_id',null).eq('buyer_id',me.id).eq('owner_id',id).maybeSingle();
+  if(!t){const r=await sb.from('threads').insert({owner_id:id}).select('id').single();if(r.error)return alert(r.error.message);t=r.data}
+  thread(t.id);
+}
+async function myReqs(){
+  const {data,error}=await sb.from('inspection_requests').select('*,listings!listing_id(title)').eq('inspector_id',me.id).order('created_at',{ascending:false}).limit(50);
+  openM('<h2>My inspection requests</h2>'+(error?`<p class="er">${esc(error.message)}</p>`:(data||[]).length?data.map(r=>`<div class="note"><b>${esc(r.listings?.title||'Listing')}</b><br>${esc(r.name)} · ${esc(r.phone)}<br>${r.preferred_date?esc(r.preferred_date):'No date set'}</div>`).join(''):'<p class="mu">No requests assigned to you yet.</p>'));
+}
+
+/* ---------- admin ---------- */
+async function adminM(t='v'){
+  if(!isAdm)return;
+  const tabs=`<div class="tabs">${[['v','Verification'],['p','Sponsored'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
+  let h='';
+  if(t=='v'){
+    const {data,error}=await sb.from('verifications').select('*,profiles!user_id(name,role)').eq('status','pending').order('created_at');
+    h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(v=>`<div class="note"><b>${esc(v.profiles?.name)}</b> · ${esc(v.profiles?.role)}<br>Ref: ${esc(v.reg_ref)}<br>Phone: ${esc(v.phone)}<br>${esc(v.note||'')}<div class="row" style="margin-top:8px"><button class="btn" onclick="rv('${v.user_id}',true)">Approve</button><button class="btn o" onclick="rv('${v.user_id}',false)">Reject</button></div></div>`).join('')||'<p class="mu">No pending verification requests.</p>';
+  }else if(t=='p'){
+    const {data,error}=await sb.from('promo_requests').select('*,listings!listing_id(title),profiles!user_id(name)').eq('status','pending').order('created_at');
+    h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(p=>`<div class="note"><b>${esc(p.listings?.title)}</b><br>${esc(p.profiles?.name)} · ${p.days} days · ${p.days==30?'₦15,000':'₦5,000'}<div class="row" style="margin-top:8px"><button class="btn" onclick="pa(${p.id},true)">Paid: activate</button><button class="btn o" onclick="pa(${p.id},false)">Dismiss</button></div></div>`).join('')||'<p class="mu">No pending sponsorship requests.</p>';
+  }else{
+    const {data,error}=await sb.from('inspection_requests').select('*,listings!listing_id(title),profiles!inspector_id(name)').order('created_at',{ascending:false}).limit(30);
+    h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(r=>`<div class="note"><b>${esc(r.listings?.title||'Listing')}</b><br>${esc(r.name)} · ${esc(r.phone)}<br>${r.preferred_date?esc(r.preferred_date):'No date'} · Inspector: ${esc(r.profiles?.name||'any')}</div>`).join('')||'<p class="mu">No inspection requests yet.</p>';
+  }
+  openM(`<h2>Admin</h2>${tabs}${h}`);
+}
+async function rv(id,ok){const {error}=await sb.rpc('review_verification',{uid:id,approve:ok});if(error)return alert(error.message);await loadAll();adminM('v')}
+async function pa(id,ok){const {error}=ok?await sb.rpc('activate_promo',{req:id}):await sb.from('promo_requests').update({status:'dismissed'}).eq('id',id);if(error)return alert(error.message);await loadAll();adminM('p')}
+async function unsp(id){const {error}=await sb.from('promotions').delete().eq('listing_id',id);if(error)return alert(error.message);delete PM[id];closeM();render()}
 
 loadAll();
 </script>
