@@ -58,11 +58,14 @@ input,select,textarea{width:100%;padding:10px;margin:5px 0;border:1px solid var(
 footer{text-align:center;color:var(--mu);font-size:13px;padding:10px 0 30px}
 .pin{font-size:30px;line-height:1;filter:drop-shadow(0 2px 2px #0006)}
 #pmap{height:240px;border-radius:12px;border:1px solid var(--br);margin:8px 0}
+.cact{display:flex;gap:8px;padding:0 12px 12px}.cact button{flex:1;padding:8px;font-size:14px}
+.bdg{position:absolute;top:-7px;right:-7px;background:#c53030;color:#fff;border-radius:99px;font-size:11px;min-width:18px;padding:1px 5px;display:none;line-height:1.4;font-weight:700}
+.toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;right:12px;max-width:520px;margin:0 auto;background:var(--pr);color:var(--on);padding:12px 14px;border-radius:12px;z-index:10000;box-shadow:0 6px 20px #0006;cursor:pointer;display:none}
 </style>
 </head>
 <body>
 <div class="w0">
-<header><span class="logo">🪺 Nesta</span><span><button class="btn o" id="acb" onclick="me?accM():authM()" style="margin-right:6px">Sign in</button><button class="btn" onclick="postM()">+ List</button></span></header>
+<header><span class="logo">🪺 Nesta</span><span><button class="btn o" id="acb" onclick="me?accM():authM()" style="margin-right:6px">Sign in</button><button class="btn o" id="msgb" onclick="inbox()" style="display:none;margin-right:6px;position:relative">💬<span class="bdg" id="msgn"></span></button><button class="btn" onclick="postM()">+ List</button></span></header>
 <section class="hero">
 <h1>Find your nest. Inspect without the stress.</h1>
 <p class="sub">Verified listings across Nigeria &amp; Africa, fair-priced inspections, and flip deals you can earn from.</p>
@@ -93,7 +96,7 @@ const CC={...NGS,...OTH};
 const stOpts=()=>'<optgroup label="Nigeria">'+Object.keys(NGS).map(c=>`<option>${c}</option>`).join('')+'</optgroup><optgroup label="Other countries">'+Object.keys(OTH).map(c=>`<option>${c}</option>`).join('')+'</optgroup>';
 const ROLE={buyer:'Buyer / Renter',agent:'Agent',landlord:'Landlord',inspector:'Inspector'};
 const MAPLIB=window.L;
-let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],RT={},isAdm=false,pmap=null,pmk=null,mode='all',vo=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
+let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],RT={},isAdm=false,pmap=null,pmk=null,TH=[],MG=[],RD={},NM={},curTh=null,gch=null,toastT=null,mode='all',vo=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
 $('city').insertAdjacentHTML('beforeend',stOpts());
 
 const isSp=l=>PM[l.id]>Date.now();
@@ -110,6 +113,8 @@ async function setUser(u){
     const a=await sb.rpc('is_admin');isAdm=a.data===true;
   }
   $('acb').textContent=prof?'👤 '+prof.name.split(' ')[0]:'Sign in';
+  $('msgb').style.display=me?'inline-block':'none';
+  if(me){await loadChat();startRT()}else{stopRT();TH=[];MG=[];RD={};updBadge()}
   render();
 }
 async function loadAll(){
@@ -150,7 +155,7 @@ function render(){
 }
 function card(l){
   const m=(l.media||[]).find(x=>x.kind=='image'),sp=isSp(l);
-  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${l.mode=='flip'?'<span class="tag">FLIP DEAL</span>':''}${l.profiles?.verified?'<span class="tag r">✔ Verified</span>':''}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><div>${esc(l.title)}</div><div class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div></div></div>`;
+  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${l.mode=='flip'?'<span class="tag">FLIP DEAL</span>':''}${l.profiles?.verified?'<span class="tag r">✔ Verified</span>':''}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?' /yr':''}</div><div>${esc(l.title)}</div><div class="mu">${esc(l.city)}${l.area?' · '+esc(l.area):''} · ${esc(l.type)}${l.beds?' · '+l.beds+' bed':''}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div></div>${cact(l)}</div>`;
 }
 function drawMap(r){
   const el=$('map');
@@ -170,8 +175,8 @@ function drawMap(r){
 }
 
 /* ---------- modal ---------- */
-function openM(h){if(pmap){pmap.remove();pmap=null}$('mo').innerHTML='<button class="x" onclick="closeM()">×</button>'+h;$('ov').classList.add('s')}
-function closeM(){if(pmap){pmap.remove();pmap=null}if(ch){sb.removeChannel(ch);ch=null}$('ov').classList.remove('s')}
+function openM(h){curTh=null;if(pmap){pmap.remove();pmap=null}$('mo').innerHTML='<button class="x" onclick="closeM()">×</button>'+h;$('ov').classList.add('s')}
+function closeM(){curTh=null;if(pmap){pmap.remove();pmap=null}if(ch){sb.removeChannel(ch);ch=null}$('ov').classList.remove('s');if(me)render()}
 
 /* ---------- auth + account ---------- */
 function authM(up){
@@ -296,23 +301,26 @@ async function promo(id){
 async function chat(id){
   if(!me)return authM();
   const l=L.find(x=>x.id==id);
+  if(l.owner_id==me.id)return inbox(id);
   let {data:t}=await sb.from('threads').select('id').eq('listing_id',id).eq('buyer_id',me.id).maybeSingle();
   if(!t){const r=await sb.from('threads').insert({listing_id:id,owner_id:l.owner_id}).select('id').single();if(r.error)return alert(r.error.message);t=r.data}
   thread(t.id);
 }
-async function inbox(){
-  const {data}=await sb.from('threads').select('id,buyer_id,owner_id,listings(title)').order('created_at',{ascending:false});
-  const T=data||[],ids=[...new Set(T.map(t=>t.buyer_id==me.id?t.owner_id:t.buyer_id))];
-  const ps=ids.length?(await sb.from('profiles').select('id,name').in('id',ids)).data||[]:[];
-  const nm=Object.fromEntries(ps.map(p=>[p.id,p.name]));
-  openM('<h2>Messages</h2>'+(T.length?T.map(t=>`<div class="note pt" onclick="thread(${t.id})"><b>${esc(t.listings?.title||'Inspector chat')}</b><br>${esc(nm[t.buyer_id==me.id?t.owner_id:t.buyer_id]||'')}</div>`).join(''):'<p class="mu">No conversations yet.</p>'));
+async function inbox(lid){
+  if(!me)return authM();
+  await loadChat();
+  let T=TH.slice();if(lid)T=T.filter(t=>t.listing_id==lid);
+  const last=t=>MG.find(m=>m.thread_id==t.id);
+  T.sort((a,b)=>new Date(last(b)?.created_at||0)-new Date(last(a)?.created_at||0));
+  openM(`<h2>Messages</h2>${window.Notification&&Notification.permission=='default'?'<button class="btn o w" onclick="askNotif()">🔔 Turn on message alerts</button>':''}`+(T.length?T.map(t=>{const o=t.buyer_id==me.id?t.owner_id:t.buyer_id,m=last(t),n=unrFor(t.id);return `<div class="note pt" onclick="thread(${t.id})"><b>${esc(t.listings?.title||'Inspector chat')}</b>${n?` <span class="bdg" style="position:static;display:inline-block">${n}</span>`:''}<br>${esc(NM[o]||'')}<br><span class="mu">${m?esc((m.sender_id==me.id?'You: ':'')+m.body.slice(0,60)):'No messages yet'}</span></div>`}).join(''):'<p class="mu">No conversations yet. Tap 💬 Chat on any listing to start one.</p>'));
 }
 async function thread(id){
+  if(!TH.find(x=>x.id==id))await loadChat();
   if(ch){sb.removeChannel(ch);ch=null}
   SEEN=new Set();
-  openM(`<h3 style="margin:0">Chat</h3><div id="ms" class="ms"></div><div class="row"><input id="mi" placeholder="Type a message" style="margin:0" onkeydown="if(event.key=='Enter')send(${id})"><button class="btn" style="flex:0 0 auto" onclick="send(${id})">Send</button></div>`);
+  openM(`<h3 style="margin:0">${chatTitle(id)}</h3><div id="ms" class="ms"></div><div class="row"><input id="mi" placeholder="Type a message" style="margin:0" onkeydown="if(event.key=='Enter')send(${id})"><button class="btn" style="flex:0 0 auto" onclick="send(${id})">Send</button></div>`);
   const {data}=await sb.from('messages').select('*').eq('thread_id',id).order('created_at');
-  (data||[]).forEach(addMsg);
+  curTh=id;(data||[]).forEach(addMsg);markRead(id);
   ch=sb.channel('t'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'thread_id=eq.'+id},p=>addMsg(p.new)).subscribe();
 }
 function addMsg(m){
@@ -379,6 +387,62 @@ async function adminM(t='v'){
 async function rv(id,ok){const {error}=await sb.rpc('review_verification',{uid:id,approve:ok});if(error)return alert(error.message);await loadAll();adminM('v')}
 async function pa(id,ok){const {error}=ok?await sb.rpc('activate_promo',{req:id}):await sb.from('promo_requests').update({status:'dismissed'}).eq('id',id);if(error)return alert(error.message);await loadAll();adminM('p')}
 async function unsp(id){const {error}=await sb.from('promotions').delete().eq('listing_id',id);if(error)return alert(error.message);delete PM[id];closeM();render()}
+
+/* ---------- unread, alerts, card chat ---------- */
+function cact(l){
+  if(me&&l.owner_id==me.id){const n=unrForListing(l.id);return `<div class="cact"><button class="btn o" onclick="event.stopPropagation();inbox(${l.id})">💬 Messages${n?` (${n} new)`:''}</button></div>`}
+  return `<div class="cact"><button class="btn" onclick="event.stopPropagation();chat(${l.id})">💬 Chat</button><button class="btn o" onclick="event.stopPropagation();bookM(${l.id})">🔎 Inspect</button></div>`;
+}
+function chatTitle(id){
+  const t=TH.find(x=>x.id==id);if(!t)return 'Chat';
+  const o=t.buyer_id==me.id?t.owner_id:t.buyer_id;
+  return esc(t.listings?.title||'Inspector chat')+' <span class="mu">· '+esc(NM[o]||'')+'</span>';
+}
+function unrFor(tid){const r=RD[tid]||0;return MG.filter(m=>m.thread_id==tid&&m.sender_id!=me.id&&new Date(m.created_at).getTime()>r).length}
+function unrTotal(){return me?TH.reduce((a,t)=>a+unrFor(t.id),0):0}
+function unrForListing(lid){return TH.filter(t=>t.listing_id==lid&&t.owner_id==me.id).reduce((a,t)=>a+unrFor(t.id),0)}
+function updBadge(){
+  const n=unrTotal(),b=$('msgn');
+  b.textContent=n>9?'9+':(n||'');b.style.display=n?'inline-block':'none';
+  document.title=(n?`(${n}) `:'')+'Nesta – Find your nest';
+}
+async function loadChat(){
+  if(!me)return;
+  const [t,r,m]=await Promise.all([
+    sb.from('threads').select('id,listing_id,buyer_id,owner_id,listings(title)'),
+    sb.from('thread_reads').select('*'),
+    sb.from('messages').select('*').order('created_at',{ascending:false}).limit(300)]);
+  TH=t.data||[];RD={};(r.data||[]).forEach(x=>RD[x.thread_id]=new Date(x.last_read_at).getTime());MG=m.data||[];
+  const ids=[...new Set(TH.map(x=>x.buyer_id==me.id?x.owner_id:x.buyer_id))].filter(i=>!NM[i]);
+  if(ids.length){const p=await sb.from('profiles').select('id,name').in('id',ids);(p.data||[]).forEach(x=>NM[x.id]=x.name)}
+  updBadge();render();
+}
+async function markRead(tid){
+  const last=Math.max(Date.now(),...MG.filter(m=>m.thread_id==tid).map(m=>new Date(m.created_at).getTime()));
+  RD[tid]=last;updBadge();
+  await sb.from('thread_reads').upsert({user_id:me.id,thread_id:tid,last_read_at:new Date(last).toISOString()},{onConflict:'user_id,thread_id'});
+}
+function startRT(){
+  stopRT();
+  gch=sb.channel('inbox-'+me.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},onMsg).subscribe();
+}
+function stopRT(){if(gch){sb.removeChannel(gch);gch=null}}
+async function onMsg(p){
+  const m=p.new;if(!m||!me||m.sender_id==me.id)return;
+  if(!MG.find(x=>x.id==m.id))MG.unshift(m);
+  if(!TH.find(t=>t.id==m.thread_id))await loadChat();
+  if(curTh==m.thread_id&&$('ms')){markRead(m.thread_id);return}
+  updBadge();render();
+  const who=NM[m.sender_id]||'Someone';
+  toast('💬 '+who+': '+m.body.slice(0,70),m.thread_id);
+  if(window.Notification&&Notification.permission=='granted'&&document.hidden){try{new Notification('Nesta · '+who,{body:m.body.slice(0,100)})}catch(e){}}
+}
+function toast(t,tid){
+  let e=$('toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';document.body.appendChild(e)}
+  e.textContent=t;e.style.display='block';e.onclick=()=>{e.style.display='none';thread(tid)};
+  clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',7000);
+}
+function askNotif(){Notification.requestPermission().then(()=>inbox())}
 
 loadAll();
 </script>
