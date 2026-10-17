@@ -210,7 +210,8 @@ footer a{color:var(--pr)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
-const sb=supabase.createClient('https://wcwleujbfwqddfbyyxcm.supabase.co','sb_publishable_k1S1Qp6_5H9LuczUh2PrCA_6SjVqG_J');
+const SOLO=new URLSearchParams(location.search).has('solo');  // ?solo=1 : this tab keeps its own login (for testing with several accounts)
+const sb=supabase.createClient('https://wcwleujbfwqddfbyyxcm.supabase.co','sb_publishable_k1S1Qp6_5H9LuczUh2PrCA_6SjVqG_J',SOLO?{auth:{storage:window.sessionStorage}}:{});
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const N=n=>'₦'+Number(n).toLocaleString('en-NG');
@@ -388,7 +389,7 @@ async function del(id){
 function postM(l){
   if(!me)return authM();
   if(!['agent','landlord'].includes(prof?.role)){alert('Only agents and landlords can list properties. Create an account with that role.');return}
-  if(!isAdm&&(prof.kyc_level||0)<1){alert('Complete Basic Verification to start listing (5–10 mins).');return kycM()}
+  if(!isAdm&&(prof.kyc_level||0)<1){refreshProf().then(()=>{if((prof.kyc_level||0)>=1)postM(l);else{alert('Complete Basic Verification to start listing (5–10 mins).');kycM()}});return}
   EDIT=l||null;EM=l?[...(l.media||[])]:[];PG=l&&exactLoc(l)?[l.lat,l.lng]:null;setTimeout(initPin,80);
   openM(`<h2>${l?'Edit listing':'List a property'}</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pba" type="number" placeholder="Bathrooms"><input id="psq" type="number" placeholder="Size (sqm)"></div><select id="ptd"><option value="">Title document (if any)</option>${TDOCS.map(t=>`<option>${t}</option>`).join('')}</select><label class="mu">Features</label><div class="chips">${FEATS.map(f=>`<label class="fc"><input type="checkbox" value="${f}"> ${f}</label>`).join('')}</div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><div id="em"></div><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">${l?'Save changes':'Publish'}</button><p id="er" class="er"></p>`);
   if(l)fillForm(l);
@@ -740,8 +741,9 @@ function vt(l){
   const p=l.profiles,v=lvl(p),r=RT[l.owner_id]||[],a=r.length?' · ★ '+(r.reduce((x,y)=>x+y.stars,0)/r.length).toFixed(1)+' ('+r.length+')':'';
   return (v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'(unverified)')+a;
 }
-function joinAgent(){
+async function joinAgent(){
   if(!me)return authM(true,'agent');
+  await refreshProf();
   if(prof?.role=='buyer'){alert('Switch your role to Agent or Landlord in Settings first.');return settingsM()}
   if(!isAdm&&(prof?.kyc_level||0)<1)return kycM();
   postM();
@@ -753,6 +755,7 @@ async function kycLoad(){
 const kPct=k=>Math.round([k.full_name,k.phone,k.id_path,k.selfie_path,k.address_path,k.cac_path,k.intro_path,k.ref_phone].filter(Boolean).length/8*100);
 async function kycM(msg){
   if(!me)return authM();
+  await refreshProf();
   const k=await kycLoad(),b=k.basic_status,f=k.full_status,lv=prof?.kyc_level||0,pct=kPct(k),r=RT[me.id]||[];
   const avg=r.length?(r.reduce((a,x)=>a+x.stars,0)/r.length).toFixed(1):null;
   const top=msg||(lv<1?'Complete Basic Verification to start listing (5–10 mins)':lv<2?'Complete Full Verification to appear higher in search and receive more leads':'You are a Nesta Verified '+(ROLE[prof.role]||'member')+' ★');
@@ -841,7 +844,7 @@ async function kreview(i,lv,ok){
   if(!ok){reason=prompt('Reason for rejecting (the person will see this)');if(reason===null)return}
   const {error}=await sb.rpc('review_kyc',{uid:k.user_id,lvl:lv,approve:ok,reason});
   if(error)return alert(error.message);
-  await loadAll();adminM('v');
+  await loadAll();if(k.user_id==me.id)await refreshProf();adminM('v');
 }
 
 /* ---------- premium listing page helpers ---------- */
@@ -924,6 +927,14 @@ async function shareP(uid){
   if(navigator.share){try{await navigator.share({title:t,url:u})}catch(e){}}
   else{try{await navigator.clipboard.writeText(u);alert('Profile link copied')}catch(e){prompt('Copy this link',u)}}
 }
+
+/* ---------- keep the signed-in profile fresh ---------- */
+async function refreshProf(){
+  if(!me)return;
+  const r=await sb.from('profiles').select('*').eq('id',me.id).single();
+  if(r.data){prof=r.data;$('acb').textContent='👤 '+prof.name.split(' ')[0]}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&me)refreshProf()});
 
 loadAll();
 </script>
