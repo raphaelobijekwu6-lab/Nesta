@@ -249,7 +249,7 @@ async function setUser(u){
   }
   $('acb').textContent=prof?'👤 '+prof.name.split(' ')[0]:'Sign in';
   $('msgb').style.display=me?'inline-block':'none';
-  if(me){await loadChat();startRT()}else{stopRT();TH=[];MG=[];RD={};updBadge()}
+  if(me){await loadChat();startRT();escCheck()}else{stopRT();TH=[];MG=[];RD={};updBadge()}
   render();
 }
 async function loadAll(){
@@ -335,7 +335,7 @@ async function doAuth(up){
 }
 function accM(){
   const v=prof?.verified;
-  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button><button class="btn o w" onclick="payM()">💼 ${['agent','inspector'].includes(prof?.role)?'Escrow Payments':'Secure payments'}</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
 }
 async function out(){await sb.auth.signOut();closeM()}
 function verM(){
@@ -380,13 +380,14 @@ function show(id){
    <div class="sec"><h3>About this property</h3><div class="abt" id="abt">${esc(l.description||'No description yet.')}</div>${(l.description||'').length>220?'<a class="mu" style="cursor:pointer;text-decoration:underline" onclick="$(\'abt\').classList.toggle(\'open\');this.remove()">Show more</a>':''}</div>
    <div class="sec"><h3>Facts &amp; features</h3><div class="facts">${fact('Type',l.type)}${fact('Bedrooms',l.beds)}${fact('Bathrooms',l.baths)}${fact('Size',l.size_sqm?l.size_sqm+' sqm':'')}${fact('Price per sqm',sqmP)}${fact('Title document',l.title_doc)}${fact('Listing',MODE[l.mode])}${fact('State',l.city)}</div>${(l.features||[]).length?`<div style="margin-top:12px">${l.features.map(f=>`<span class="chip">✓ ${esc(f)}</span>`).join('')}</div>`:''}</div>
    ${flip}
+   ${feesBlk(l)}
    ${pay&&l.mode=='buy'?pay:''}
    <div class="sec"><h3>Location</h3><div id="dmap"></div><div class="mu" style="margin:6px 0">${exact?'Pin placed by the lister':'Approximate area (the lister did not drop a pin)'}</div><div class="row"><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}">Google Maps</a><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=${l.lat},${l.lng}">Apple Maps</a></div></div>
-   <div class="sec"><h3>Listed by</h3><div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
+   <div class="sec"><h3>Listed by</h3><div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
    <div class="sec"><div class="note" style="margin:0"><b>🔎 Don't pay heavy inspection fees</b><br>Book a Nesta inspector for a flat fee and get photos, video and a report.<button class="btn w" onclick="bookM(${l.id})">Book an inspection</button></div></div>
    ${sim.length?`<div class="sec"><h3>Similar homes</h3><div class="sim">${sim.map(x=>{const m=(x.media||[]).find(q=>q.kind=='image');return `<div class="sc" onclick="show(${x.id})"><div class="im"${m?` style="background-image:url('${mu(m.path)}')"`:''}></div><div class="tx"><b>${N(x.price)}</b><br><span class="mu">${esc(x.title.slice(0,32))}<br>${esc(x.city)}</span></div></div>`}).join('')}</div></div>`:''}
    <div class="sec"><div class="safe"><b>Stay safe.</b> Never send money before you have inspected the property and checked the documents. Nesta never asks for payment in chat.</div><p class="c mu"><a style="cursor:pointer;text-decoration:underline" onclick="reportL(${l.id})">⚠ Report this listing</a></p></div>
-  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
+  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:escOK(l)?`<button class="btn o" onclick="bookM(${l.id})">Book Inspection</button><button class="btn" onclick="escM(${l.id})">Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9">🔒 Protected by Nesta Escrow</small></button>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
   setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price)},80);
 }
 async function del(id){
@@ -399,7 +400,7 @@ function postM(l){
   if(!['agent','landlord'].includes(prof?.role)){alert('Only agents and landlords can list properties. Create an account with that role.');return}
   if(!isAdm&&(prof.kyc_level||0)<1){refreshProf().then(()=>{if((prof.kyc_level||0)>=1)postM(l);else{alert('Complete Basic Verification to start listing (5–10 mins).');kycM()}});return}
   EDIT=l||null;EM=l?[...(l.media||[])]:[];PG=l&&exactLoc(l)?[l.lat,l.lng]:null;setTimeout(initPin,80);
-  openM(`<h2>${l?'Edit listing':'List a property'}</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pba" type="number" placeholder="Bathrooms"><input id="psq" type="number" placeholder="Size (sqm)"></div><select id="ptd"><option value="">Title document (if any)</option>${TDOCS.map(t=>`<option>${t}</option>`).join('')}</select><label class="mu">Features</label><div class="chips">${FEATS.map(f=>`<label class="fc"><input type="checkbox" value="${f}"> ${f}</label>`).join('')}</div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><div id="em"></div><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">${l?'Save changes':'Publish'}</button><p id="er" class="er"></p>`);
+  openM(`<h2>${l?'Edit listing':'List a property'}</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pba" type="number" placeholder="Bathrooms"><input id="psq" type="number" placeholder="Size (sqm)"></div><select id="ptd"><option value="">Title document (if any)</option>${TDOCS.map(t=>`<option>${t}</option>`).join('')}</select><label class="mu">Rent fees (optional). Lets clients pay securely through Nesta Escrow</label><div class="row3"><input id="ffa" type="number" placeholder="Agency fee ₦"><input id="ffg" type="number" placeholder="Agreement fee ₦"><input id="ffc" type="number" placeholder="Caution fee ₦"></div><label class="mu">Features</label><div class="chips">${FEATS.map(f=>`<label class="fc"><input type="checkbox" value="${f}"> ${f}</label>`).join('')}</div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><div id="em"></div><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">${l?'Save changes':'Publish'}</button><p id="er" class="er"></p>`);
   if(l)fillForm(l);
 }
 function geo(){
@@ -440,7 +441,7 @@ async function post(){
     }
     b.textContent='Saving…';
     const c=PG||((EDIT&&EDIT.city==city&&EDIT.lat!=null)?[EDIT.lat,EDIT.lng]:(CC[city]||CC.Lagos));
-    const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,baths:parseInt($('pba').value)||0,size_sqm:parseInt($('psq').value)||null,title_doc:$('ptd').value||null,features:[...document.querySelectorAll('.fc input:checked')].map(i=>i.value),lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
+    const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,baths:parseInt($('pba').value)||0,size_sqm:parseInt($('psq').value)||null,title_doc:$('ptd').value||null,agency_fee:parseFloat($('ffa').value)||null,agreement_fee:parseFloat($('ffg').value)||null,caution_fee:parseFloat($('ffc').value)||null,features:[...document.querySelectorAll('.fc input:checked')].map(i=>i.value),lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
     let q;
     if(EDIT){delete row.owner_id;q=await sb.from('listings').update(row).eq('id',EDIT.id).select('*,profiles!owner_id(name,verified,role,kyc_level)').single()}
     else q=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified,role,kyc_level)').single();
@@ -458,15 +459,24 @@ async function post(){
 }
 
 /* ---------- inspections + promotion ---------- */
-function bookM(id){
+async function bookM(id){
   if(!me)return authM();
-  openM(`<h2>Book an inspection</h2><p class="mu">Flat-fee inspection by a local inspector.</p><input id="bn" placeholder="Your name" value="${esc(prof?.name||'')}"><input id="bp" type="tel" placeholder="Phone / WhatsApp"><input id="bd" type="date"><select id="bi"><option value="">Any available inspector</option>${INS.map(i=>`<option value="${i.id}">${esc(i.name)}${i.verified?' ✔':''}</option>`).join('')}</select><button class="btn w" onclick="book(${id})">Request inspection</button><p id="er" class="er"></p>`);
+  const fr=await sb.from('app_settings').select('value').eq('key','inspection_fee').maybeSingle(),fee=Number(fr.data?.value)||5000,mode=await escMode();
+  openM(`<h2>Book Inspection</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged.</div>':''}<p class="mu" style="margin-top:0">A local inspector visits and sends you photos, video and a report. The flat fee of <b>${N(fee)}</b> is held in ${ESC_NAME} and only released to the inspector after you confirm.</p><input id="bn" placeholder="Your name" value="${esc(prof?.name||'')}"><input id="bp" type="tel" placeholder="Phone / WhatsApp"><input id="bd" type="date"><select id="bi"><option value="">Any available inspector</option>${INS.map(i=>`<option value="${i.id}">${esc(i.name)}${i.verified?' ✔':''}</option>`).join('')}</select><button class="btn w" id="bkb" data-l="Pay ${N(fee)} Securely" onclick="book(${id})">Pay ${N(fee)} Securely</button><p id="er" class="er"></p>`);
 }
 async function book(id){
-  const name=$('bn').value.trim(),phone=$('bp').value.trim();if(!name||!phone)return err('Add your name and phone');
-  const {error}=await sb.from('inspection_requests').insert({listing_id:id,inspector_id:$('bi').value||null,name,phone,preferred_date:$('bd').value||null});
-  if(error)return err(error.message);
-  openM('<h2>Request sent ✔</h2><p>An inspector will contact you on '+esc(phone)+'.</p><button class="btn w" onclick="closeM()">Done</button>');
+  const name=$('bn').value.trim(),phone=$('bp').value.trim();
+  if(!name||!phone)return err('Add your name and phone');
+  const b=$('bkb');b.disabled=true;b.textContent='Processing…';
+  try{
+    if(await escMode()!='test')throw new Error('Online payment is not switched on yet.');
+    const insp=$('bi').value||null,dt=$('bd').value||null;
+    let r=await sb.rpc('escrow_start_inspection',{lid:id,inspector:insp});if(r.error)throw r.error;
+    const eid=r.data;
+    r=await sb.rpc('escrow_test_pay',{eid});if(r.error)throw r.error;
+    const q=await sb.from('inspection_requests').insert({listing_id:id,inspector_id:insp,name,phone,preferred_date:dt,escrow_id:eid});if(q.error)throw q.error;
+    openM(`<h2>✅ Inspection booked</h2><p>Your inspection fee is safely held in ${ESC_NAME}. An inspector will contact you on ${esc(phone)}.</p><p class="mu">After the inspection, confirm it under Secure payments to release the fee. Reference #${eid} · 🧪 Test mode.</p><button class="btn w" onclick="payM()">View Transaction</button><button class="btn o w" onclick="closeM()">Done</button>`);
+  }catch(e){err(e.message||String(e));b.disabled=false;b.textContent=b.dataset.l}
 }
 function promoM(id){
   openM(`<h2>Promote your listing</h2><p class="mu">Sponsored listings appear at the top with a Sponsored label. Pay by bank transfer after you submit and we activate it once payment is confirmed.</p><select id="pdays"><option value="7">7 days · ₦5,000</option><option value="30">30 days · ₦15,000</option></select><button class="btn w" onclick="promo(${id})">Request sponsorship</button><p id="er" class="er"></p><p class="mu">Prices are placeholders for testing.</p>`);
@@ -550,13 +560,20 @@ async function myReqs(){
 /* ---------- admin ---------- */
 async function adminM(t='v'){
   if(!isAdm)return;
-  const tabs=`<div class="tabs">${[['v','KYC'],['p','Sponsored'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
+  const tabs=`<div class="tabs">${[['v','KYC'],['p','Sponsored'],['e','Escrow'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
   let h='';
   if(t=='v'){
     h=await kycQueue();
   }else if(t=='p'){
     const {data,error}=await sb.from('promo_requests').select('*,listings!listing_id(title),profiles!user_id(name)').eq('status','pending').order('created_at');
     h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(p=>`<div class="note"><b>${esc(p.listings?.title)}</b><br>${esc(p.profiles?.name)} · ${p.days} days · ${p.days==30?'₦15,000':'₦5,000'}<div class="row" style="margin-top:8px"><button class="btn" onclick="pa(${p.id},true)">Paid: activate</button><button class="btn o" onclick="pa(${p.id},false)">Dismiss</button></div></div>`).join('')||'<p class="mu">No pending sponsorship requests.</p>';
+  }else if(t=='e'){
+    await sb.rpc('escrow_sweep');
+    let q=sb.from('escrows').select('*,client:profiles!client_id(name),agent:profiles!agent_id(name)').order('created_at',{ascending:false}).limit(60);
+    if(ESF=='released')q=q.in('status',['released','refunded']);else if(ESF!='all')q=q.eq('status',ESF);
+    const {data,error}=await q;
+    const chips=[['held','Held'],['disputed','Disputed'],['released','Released'],['all','All']].map(([k,n])=>`<button class="tab${ESF==k?' on':''}" onclick="ESF='${k}';adminM('e')">${n}</button>`).join('');
+    h=`<div class="tabs" style="margin-top:0">${chips}</div>`+(error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(e=>`<div class="note"><b>${esc(e.title)}</b> · ${N(e.total)}<br>${EST[e.status]}${e.mode=='test'?' · 🧪 test':''}${e.kind=='inspection'?' · 🔎 inspection':''}<br>Client: ${esc(e.client?.name)} → ${e.kind=='inspection'?'Inspector':'Agent'}: ${esc(e.agent?.name||'to be assigned')}<br><span class="mu">Paid ${e.paid_at?dayS(e.paid_at):'—'} · auto-release ${e.release_after?dayS(e.release_after):'—'}</span>${e.dispute_reason?`<br><span class="er">Dispute: ${esc(e.dispute_reason)}</span>`:''}${e.admin_note?`<br><span class="mu">Notes: ${esc(e.admin_note)}</span>`:''}<div class="row" style="margin-top:8px">${['held','disputed'].includes(e.status)?`<button class="btn" onclick="escAdmin(${e.id},'release')">Release to ${e.kind=='inspection'?'Inspector':'Agent'}</button><button class="btn o" onclick="escAdmin(${e.id},'refund')">Refund to Client</button>`:''}<button class="btn o" onclick="escNote(${e.id})">📝 Notes</button></div></div>`).join('')||'<p class="mu">Nothing here.</p>');
   }else if(t=='c'){
     const {data,error}=await sb.from('complaints').select('*,reporter:profiles!user_id(name,role),about:profiles!about_user(name,role),listings!listing_id(title)').neq('status','resolved').order('created_at');
     h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(c=>`<div class="note"><b>#${c.id} · ${esc(c.subject)}</b> · ${esc(KINDS[c.kind]||c.kind)} · ${esc(c.status)}<br>From: ${esc(c.reporter?.name)} (${esc(c.reporter?.role)})${c.about?`<br>About: ${esc(c.about.name)} (${esc(c.about.role)})`:''}${c.listings?`<br>Listing: ${esc(c.listings.title)}`:''}<br>${esc(c.message)}${c.admin_note?`<br><b>Note:</b> ${esc(c.admin_note)}`:''}<div class="row" style="margin-top:8px"><button class="btn o" onclick="cm(${c.id},'in_review')">In review</button><button class="btn" onclick="cm(${c.id},'resolved')">Resolve</button></div></div>`).join('')||'<p class="mu">No open complaints 🎉</p>';
@@ -619,9 +636,9 @@ async function onMsg(p){
   toast('💬 '+who+': '+m.body.slice(0,70),m.thread_id);
   if(window.Notification&&Notification.permission=='granted'&&document.hidden){try{new Notification('Nesta · '+who,{body:m.body.slice(0,100)})}catch(e){}}
 }
-function toast(t,tid){
+function toast(t,tid,fn){
   let e=$('toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';document.body.appendChild(e)}
-  e.textContent=t;e.style.display='block';e.onclick=()=>{e.style.display='none';thread(tid)};
+  e.textContent=t;e.style.display='block';e.onclick=()=>{e.style.display='none';fn?fn():thread(tid)};
   clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',7000);
 }
 function askNotif(){Notification.requestPermission().then(()=>inbox())}
@@ -633,12 +650,16 @@ function themeSet(t){
   settingsM();
 }
 function settingsM(){
+  settingsM0();
+  if(me&&$('swa'))sb.from('agent_contacts').select('whatsapp').eq('user_id',me.id).maybeSingle().then(r=>{if($('swa'))$('swa').value=r.data?.whatsapp||''});
+}
+function settingsM0(){
   if(!me)return authM();
   const th=document.documentElement.getAttribute('data-theme')||'';
   openM(`<h2>Settings</h2><p class="mu">${esc(me.email||'')}</p>
   <label class="mu">Name</label><input id="sn" value="${esc(prof?.name||'')}">
   <label class="mu">I am a…</label><select id="sr">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}"${prof?.role==k?' selected':''}>${v}</option>`).join('')}</select>
-  ${prof?.role!='buyer'?`<label class="mu">Agency / company (optional)</label><input id="sa" maxlength="80" value="${esc(prof?.agency||'')}"><label class="mu">About me (shown on your public profile)</label><textarea id="sbio" rows="4" maxlength="400" placeholder="Areas you cover, years of experience, languages…">${esc(prof?.bio||'')}</textarea>`:''}<label class="mu" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="se" style="width:auto;margin:0" ${prof?.email_alerts!==false?'checked':''}> Email me about new messages</label>
+  ${prof?.role!='buyer'?`<label class="mu">Agency / company (optional)</label><input id="sa" maxlength="80" value="${esc(prof?.agency||'')}"><label class="mu">About me (shown on your public profile)</label><textarea id="sbio" rows="4" maxlength="400" placeholder="Areas you cover, years of experience, languages…">${esc(prof?.bio||'')}</textarea><label class="mu">WhatsApp number for clients who pay you (private until a client pays)</label><input id="swa" type="tel" placeholder="e.g. 0803 123 4567">`:''}<label class="mu" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="se" style="width:auto;margin:0" ${prof?.email_alerts!==false?'checked':''}> Email me about new messages</label>
   <button class="btn w" onclick="saveSet()">Save changes</button><p id="er" class="er"></p>
   <h3>Appearance</h3><div class="row">${[['','Auto'],['light','☀️ Light'],['dark','🌙 Dark']].map(([k,v])=>`<button class="btn${th==k?'':' o'}" onclick="themeSet('${k}')">${v}</button>`).join('')}</div>
   <h3>Alerts</h3><button class="btn o w" onclick="alertsOn()">🔔 Browser alerts</button>
@@ -653,6 +674,7 @@ async function saveSet(){
   if($('sa')){upd.agency=$('sa').value.trim().slice(0,80)||null;upd.bio=$('sbio').value.trim().slice(0,400)||null}
   const {error}=await sb.from('profiles').update(upd).eq('id',me.id);
   if(error)return err(error.message);
+  if($('swa')){const wa=$('swa').value.replace(/[^\d+]/g,'');const r2=wa?await sb.from('agent_contacts').upsert({user_id:me.id,whatsapp:wa}):await sb.from('agent_contacts').delete().eq('user_id',me.id);if(r2.error)return err(r2.error.message)}
   await setUser(me);await loadAll();settingsM();good('Saved ✔');
 }
 async function newPw(){
@@ -914,7 +936,7 @@ function editL(id){const l=L.find(x=>x.id==id);if(l)postM(l)}
 function fillForm(l){
   if($('pc').value!=l.city){$('pc').insertAdjacentHTML('afterbegin',`<option>${esc(l.city)}</option>`);$('pc').value=l.city}
   $('pt').value=l.title;$('pm').value=l.mode;$('py').value=l.type;$('pa').value=l.area||'';$('pp').value=l.price;
-  $('pb').value=l.beds||'';$('pba').value=l.baths||'';$('psq').value=l.size_sqm||'';$('ptd').value=l.title_doc||'';
+  $('pb').value=l.beds||'';$('pba').value=l.baths||'';$('psq').value=l.size_sqm||'';$('ptd').value=l.title_doc||'';$('ffa').value=l.agency_fee||'';$('ffg').value=l.agreement_fee||'';$('ffc').value=l.caution_fee||'';
   $('pv').value=l.arv||'';$('pr').value=l.repair||'';$('pd').value=l.description||'';
   document.querySelectorAll('.fc input').forEach(i=>i.checked=(l.features||[]).includes(i.value));
   renderEM();
@@ -964,6 +986,101 @@ async function refreshProf(){
   if(r.data){prof=r.data;$('acb').textContent='👤 '+prof.name.split(' ')[0]}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&me)refreshProf()});
+
+/* ---------- Nesta Escrow (TEST MODE until live payments are set up) ---------- */
+const ESC_NAME='Nesta Escrow',ESC_DAYS=7;
+const EST={awaiting_payment:'⏳ Awaiting payment',held:'🔒 Funds held',released:'✔ Released to agent',refunded:'↩ Refunded to client',disputed:'⚠ Disputed'};
+const feeItems=l=>[['Agency fee',l.agency_fee],['Agreement fee',l.agreement_fee],['Caution fee',l.caution_fee]].filter(x=>x[1]>0);
+const escOK=l=>l.mode=='rent'&&feeItems(l).length>0&&l.profiles?.role=='agent'&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
+function feesBlk(l){
+  const it=feeItems(l);if(l.mode!='rent'||!it.length)return '';
+  const tot=it.reduce((a,x)=>a+Number(x[1]),0);
+  return `<div class="sec"><h3>Fees to pay upfront</h3><div class="facts">${it.map(x=>`<div><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div><span>Total</span><b>${N(tot)}</b></div></div>${escOK(l)?`<div class="note">🔒 Pay agency fees securely through ${ESC_NAME}. Your money is protected until you confirm.</div>`:''}</div>`;
+}
+async function escMode(){const r=await sb.from('app_settings').select('value').eq('key','escrow_mode').maybeSingle();return r.data?.value||'test'}
+async function escM(lid){
+  if(!me)return authM();
+  const l=L.find(x=>x.id==lid);if(!l)return;
+  const it=[['Agency Fee',l.agency_fee],['Agreement Fee',l.agreement_fee],['Caution / Other fees',l.caution_fee]].filter(x=>x[1]>0),tot=it.reduce((a,x)=>a+Number(x[1]),0),mode=await escMode();
+  openM(`<h2>Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run of the payment flow.</div>':''}<p class="mu" style="margin-top:0">${esc(l.title)}</p><div class="facts" style="grid-template-columns:1fr">${it.map(x=>`<div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total to be held</b><b>${N(tot)}</b></div></div><p class="mu">Your money is held safely by Nesta. The agent only receives it after you confirm.</p><p class="mu" style="font-size:13px">If you do not respond within ${ESC_DAYS} days, the funds are released to the agent automatically. We warn you 48 hours before.</p><button class="btn w" id="escb" data-l="Pay ${N(tot)} Securely" onclick="escPay(${l.id})">Pay ${N(tot)} Securely</button><p id="er" class="er"></p>`);
+}
+async function escPay(lid){
+  const b=$('escb');b.disabled=true;b.textContent='Processing…';
+  try{
+    if(await escMode()!='test')throw new Error('Online payment is not switched on yet.');
+    let r=await sb.rpc('escrow_start',{lid});if(r.error)throw r.error;
+    const eid=r.data;
+    r=await sb.rpc('escrow_test_pay',{eid});if(r.error)throw r.error;
+    const l=L.find(x=>x.id==lid),tot=feeItems(l).reduce((a,x)=>a+Number(x[1]),0);escNotify(l,eid);
+    const c=await sb.rpc('escrow_contact',{eid}),dg=String(c.data||'').replace(/\D/g,'');
+    const wa=dg.length>=7?'https://wa.me/'+dg+'?text='+encodeURIComponent('Hello, I paid '+N(tot)+' into Nesta Escrow (ref #'+eid+') for "'+l.title+'".'):'';
+    openM(`<h2>✅ Payment Successful</h2><p>Your funds are now safely held in ${ESC_NAME}.<br>We have notified the agent. They will contact you shortly.</p><p class="mu">Your payment is safely held by Nesta. The agent will only receive the money after you confirm.<br>Reference #${eid} · 🧪 Test mode: no real money moved.</p><button class="btn w" onclick="payM()">View Transaction</button>${wa?`<a class="btn o w" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener" href="${wa}">Chat with Agent (WhatsApp)</a>`:`<button class="btn o w" onclick="chat(${lid})">Chat with Agent</button>`}<button class="btn o w" onclick="accM()">Go to My Dashboard</button>`);
+  }catch(e){err(e.message||String(e));b.disabled=false;b.textContent=b.dataset.l||'Pay Securely'}
+}
+async function escNotify(l,eid){
+  try{
+    const tot=feeItems(l).reduce((a,x)=>a+Number(x[1]),0);
+    let {data:t}=await sb.from('threads').select('id').eq('listing_id',l.id).eq('buyer_id',me.id).maybeSingle();
+    if(!t){const r=await sb.from('threads').insert({listing_id:l.id,owner_id:l.owner_id}).select('id').single();t=r.data}
+    if(t)await sb.from('messages').insert({thread_id:t.id,body:`🔒 I paid ${N(tot)} into ${ESC_NAME} (ref #${eid}). Please confirm the inspection or agreement with me.`});
+  }catch(e){}
+}
+const dayS=d=>new Date(d).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'});
+let ESF='held';
+async function payM(){
+  if(!me)return authM();
+  await sb.rpc('escrow_sweep');
+  const {data,error}=await sb.from('escrows').select('*').or(`client_id.eq.${me.id},agent_id.eq.${me.id}`).order('created_at',{ascending:false});
+  const E=data||[],ids=[...new Set(E.flatMap(e=>[e.client_id,e.agent_id]).filter(i=>i&&i!=me.id))],nm={};
+  if(ids.length){const q=await sb.from('profiles').select('id,name').in('id',ids);(q.data||[]).forEach(x=>nm[x.id]=x.name)}
+  const payee=['agent','inspector'].includes(prof?.role);
+  const card=e=>{
+    const mine=e.client_id==me.id,ins=e.kind=='inspection',who=ins?'Inspector':'Agent',
+      other=esc(mine?(nm[e.agent_id]||(ins?'to be assigned':'')):(nm[e.client_id]||'')),
+      soon=e.status=='held'&&e.release_after&&new Date(e.release_after)-Date.now()<48*36e5;
+    return `<div class="note"><b>${esc(e.title)}</b><br>${mine?'You pay':'You receive'} <b>${N(e.total)}</b> · ${mine?who:'Client'}: ${other}<br>${EST[e.status]||esc(e.status)}${e.mode=='test'?' · 🧪 test':''} · ${dayS(e.paid_at||e.created_at)}<br><span class="mu">${(e.items||[]).map(i=>esc(i.label)+' '+N(i.amount)).join(' · ')}</span>
+    ${e.status=='held'&&mine?`${soon?`<p style="color:#b45309"><b>⚠ Funds will be released to the ${who.toLowerCase()} on ${dayS(e.release_after)} unless you respond.</b></p>`:''}<p><b>${ins?'Has the inspection been completed? Are you satisfied with the inspector?':'Have you completed the inspection / discussion with the agent? Are you satisfied to proceed?'}</b></p><div class="row"><button class="btn" onclick="escRelease(${e.id})">Yes, Release Funds to ${who}</button><button class="btn o" onclick="escDispute(${e.id})">No, I have a problem</button></div><p class="mu">If you do not respond, funds are released automatically on ${dayS(e.release_after)}.</p>`:''}
+    ${e.status=='held'&&!mine?`<p class="mu"><b>Waiting for client confirmation.</b> You cannot release these funds yourself. They are paid out when the client confirms, or automatically on ${dayS(e.release_after)}.</p>`:''}
+    ${e.status=='released'&&mine?'<p class="mu">Released. The '+who.toLowerCase()+' receives the money within 24 hours.</p>':''}
+    ${e.status=='disputed'?`<p class="er">Dispute: ${esc(e.dispute_reason||'')}. Nesta will review and contact you.</p>`:''}${e.admin_note?`<p class="mu">Nesta note: ${esc(e.admin_note)}</p>`:''}</div>`;
+  };
+  const f=ESF=='all'?E:ESF=='released'?E.filter(e=>['released','refunded'].includes(e.status)):E.filter(e=>e.status==ESF);
+  const chips=[['held','Funds Held'],['disputed','Disputed'],['released','Released'],['all','All']].map(([k,n])=>`<button class="tab${ESF==k?' on':''}" onclick="ESF='${k}';payM()">${n}</button>`).join('');
+  openF(payee?'💼 Escrow Payments':'💼 Secure payments',`<p class="mu" style="margin-top:0">${payee?'Escrow protects both you and your clients. Funds are released once the client confirms.':'Your money is protected until you confirm.'}</p><div class="tabs" style="margin-top:0">${chips}</div>${error?`<p class="er">${esc(error.message)}</p>`:f.length?f.map(card).join(''):'<p class="mu">Nothing here yet.</p>'}`,accM);
+}
+function escRelease(id){
+  openM(`<h2>Release the funds?</h2><p>Are you satisfied with the agent and ready to proceed? Releasing the funds means the agent gets paid.</p><button class="btn w" onclick="escDoRelease(${id})">Yes, Release Funds</button><button class="btn o w" onclick="payM()">Cancel</button><p id="er" class="er"></p>`);
+}
+async function escDoRelease(id){
+  const {error}=await sb.rpc('escrow_release',{eid:id});if(error)return err(error.message);
+  openM('<h2>✔ Funds released</h2><p>Thank you for confirming. The money reaches the agent within 24 hours.</p><button class="btn w" onclick="payM()">Back to my payments</button>');
+}
+function escDispute(id){
+  openM(`<h2>Report a Problem</h2><p class="mu">Tell us what went wrong. Nesta will review it and contact you. Your money stays safe until it is resolved.</p><textarea id="dr" rows="5" maxlength="500" placeholder="What happened?"></textarea><button class="btn w" onclick="escDoDispute(${id})">Report a Problem</button><button class="btn o w" onclick="payM()">Back</button><p id="er" class="er"></p>`);
+}
+async function escDoDispute(id){
+  const reason=$('dr').value.trim();if(reason.length<5)return err('Please describe the problem');
+  const {error}=await sb.rpc('escrow_dispute',{eid:id,reason});if(error)return err(error.message);payM();
+}
+async function escAdmin(id,act){
+  const note=prompt((act=='release'?'Release to agent':'Refund client')+'. Note (optional):');if(note===null)return;
+  const {error}=await sb.rpc('escrow_admin',{eid:id,act,note:note.trim()||null});if(error)return alert(error.message);adminM('e');
+}
+
+async function escNote(id){
+  const note=prompt('Note for this payment (the client and the agent can see it):');if(note===null)return;
+  const {error}=await sb.rpc('escrow_note',{eid:id,note:note.trim()||null});if(error)return alert(error.message);adminM('e');
+}
+async function escCheck(){
+  if(!me)return;
+  try{
+    await sb.rpc('escrow_sweep');
+    const {data}=await sb.from('escrows').select('title,release_after,kind').eq('client_id',me.id).eq('status','held');
+    const E=data||[];if(!E.length)return;
+    const soon=E.find(e=>e.release_after&&new Date(e.release_after)-Date.now()<48*36e5);
+    toast(soon?`⚠ "${String(soon.title).slice(0,40)}" will be released on ${dayS(soon.release_after)} unless you respond. Tap to review.`:'🔒 Have you completed the inspection or discussion? Tap to confirm or report a problem.',null,payM);
+  }catch(e){}
+}
 
 loadAll();
 </script>
