@@ -183,6 +183,12 @@ footer a{color:var(--pr)}
 .dc img{cursor:zoom-in}
 .kc select,.kc input{margin:6px 0 0}
 .mt{color:var(--pr);font-weight:700}.mx{color:#b45309;font-weight:700}
+:root{--pay:#1B7F4F;--payt:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pay:#52B788;--payt:#0F1A14}}
+:root[data-theme="dark"]{--pay:#52B788;--payt:#0F1A14}
+.ctc{display:flex;flex-direction:column;gap:8px;width:100%}
+.cta .btn.pay{width:100%;flex:none;background:var(--pay);color:var(--payt);font-size:17px;padding:15px;box-shadow:0 4px 14px #1b7f4f55}
+.cta .btn.sm{width:100%;flex:none;padding:10px;font-size:14px}
 </style>
 </head>
 <body>
@@ -387,7 +393,7 @@ function show(id){
    <div class="sec"><div class="note" style="margin:0"><b>🔎 Don't pay heavy inspection fees</b><br>Book a Nesta inspector for a flat fee and get photos, video and a report.<button class="btn w" onclick="bookM(${l.id})">Book an inspection</button></div></div>
    ${sim.length?`<div class="sec"><h3>Similar homes</h3><div class="sim">${sim.map(x=>{const m=(x.media||[]).find(q=>q.kind=='image');return `<div class="sc" onclick="show(${x.id})"><div class="im"${m?` style="background-image:url('${mu(m.path)}')"`:''}></div><div class="tx"><b>${N(x.price)}</b><br><span class="mu">${esc(x.title.slice(0,32))}<br>${esc(x.city)}</span></div></div>`}).join('')}</div></div>`:''}
    <div class="sec"><div class="safe"><b>Stay safe.</b> Never send money before you have inspected the property and checked the documents. Nesta never asks for payment in chat.</div><p class="c mu"><a style="cursor:pointer;text-decoration:underline" onclick="reportL(${l.id})">⚠ Report this listing</a></p></div>
-  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:escOK(l)?`<button class="btn o" onclick="bookM(${l.id})">Book Inspection</button><button class="btn" onclick="escM(${l.id})">Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9">🔒 Protected by Nesta Escrow</small></button>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
+  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
   setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price)},80);
 }
 async function del(id){
@@ -462,7 +468,7 @@ async function post(){
 async function bookM(id){
   if(!me)return authM();
   const fr=await sb.from('app_settings').select('value').eq('key','inspection_fee').maybeSingle(),fee=Number(fr.data?.value)||5000,mode=await escMode();
-  openM(`<h2>Book Inspection</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged.</div>':''}<p class="mu" style="margin-top:0">A local inspector visits and sends you photos, video and a report. The flat fee of <b>${N(fee)}</b> is held in ${ESC_NAME} and only released to the inspector after you confirm.</p><input id="bn" placeholder="Your name" value="${esc(prof?.name||'')}"><input id="bp" type="tel" placeholder="Phone / WhatsApp"><input id="bd" type="date"><select id="bi"><option value="">Any available inspector</option>${INS.map(i=>`<option value="${i.id}">${esc(i.name)}${i.verified?' ✔':''}</option>`).join('')}</select><button class="btn w" id="bkb" data-l="Pay ${N(fee)} Securely" onclick="book(${id})">Pay ${N(fee)} Securely</button><p id="er" class="er"></p>`);
+  openM(`<h2>Book Inspection</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged.</div>':''}<p class="mu" style="margin-top:0">A local inspector visits and sends you photos, video and a report. The flat fee of <b>${N(fee)}</b> is held in ${ESC_NAME} and only released to the inspector after you confirm. You can raise a dispute anytime before the funds are released.</p><input id="bn" placeholder="Your name" value="${esc(prof?.name||'')}"><input id="bp" type="tel" placeholder="Phone / WhatsApp"><input id="bd" type="date"><select id="bi"><option value="">Any available inspector</option>${INS.map(i=>`<option value="${i.id}">${esc(i.name)}${i.verified?' ✔':''}</option>`).join('')}</select><button class="btn w" id="bkb" data-l="Pay ${N(fee)} Securely" onclick="book(${id})">Pay ${N(fee)} Securely</button><p id="er" class="er"></p>`);
 }
 async function book(id){
   const name=$('bn').value.trim(),phone=$('bp').value.trim();
@@ -1002,7 +1008,7 @@ async function escM(lid){
   if(!me)return authM();
   const l=L.find(x=>x.id==lid);if(!l)return;
   const it=[['Agency Fee',l.agency_fee],['Agreement Fee',l.agreement_fee],['Caution / Other fees',l.caution_fee]].filter(x=>x[1]>0),tot=it.reduce((a,x)=>a+Number(x[1]),0),mode=await escMode();
-  openM(`<h2>Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run of the payment flow.</div>':''}<p class="mu" style="margin-top:0">${esc(l.title)}</p><div class="facts" style="grid-template-columns:1fr">${it.map(x=>`<div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total to be held</b><b>${N(tot)}</b></div></div><p class="mu">Your money is held safely by Nesta. The agent only receives it after you confirm.</p><p class="mu" style="font-size:13px">If you do not respond within ${ESC_DAYS} days, the funds are released to the agent automatically. We warn you 48 hours before.</p><button class="btn w" id="escb" data-l="Pay ${N(tot)} Securely" onclick="escPay(${l.id})">Pay ${N(tot)} Securely</button><p id="er" class="er"></p>`);
+  openM(`<h2>Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run of the payment flow.</div>':''}<div class="agent" style="margin:8px 0"><div class="av">${esc((l.profiles?.name||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(l.profiles?.name||'Agent')}</b><br><span style="color:var(--ac);font-weight:700">★ Nesta Verified Agent</span></div></div><p class="mu" style="margin-top:0">${esc(l.title)}</p><div class="facts" style="grid-template-columns:1fr">${it.map(x=>`<div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total to be held</b><b>${N(tot)}</b></div></div><p class="mu">Your money is held safely by Nesta. The agent only receives it after you confirm.</p><p class="mu" style="font-size:13px">You can raise a dispute anytime before the funds are released.</p><p class="mu" style="font-size:13px">If you do not respond within ${ESC_DAYS} days, the funds are released to the agent automatically. We warn you 48 hours before.</p><button class="btn w" id="escb" data-l="Pay ${N(tot)} Securely" onclick="escPay(${l.id})">Pay ${N(tot)} Securely</button><p id="er" class="er"></p>`);
 }
 async function escPay(lid){
   const b=$('escb');b.disabled=true;b.textContent='Processing…';
@@ -1038,6 +1044,7 @@ async function payM(){
     const mine=e.client_id==me.id,ins=e.kind=='inspection',who=ins?'Inspector':'Agent',
       other=esc(mine?(nm[e.agent_id]||(ins?'to be assigned':'')):(nm[e.client_id]||'')),
       soon=e.status=='held'&&e.release_after&&new Date(e.release_after)-Date.now()<48*36e5;
+    if(!mine)return agentCard(e,nm);
     return `<div class="note"><b>${esc(e.title)}</b><br>${mine?'You pay':'You receive'} <b>${N(e.total)}</b> · ${mine?who:'Client'}: ${other}<br>${EST[e.status]||esc(e.status)}${e.mode=='test'?' · 🧪 test':''} · ${dayS(e.paid_at||e.created_at)}<br><span class="mu">${(e.items||[]).map(i=>esc(i.label)+' '+N(i.amount)).join(' · ')}</span>
     ${e.status=='held'&&mine?`${soon?`<p style="color:#b45309"><b>⚠ Funds will be released to the ${who.toLowerCase()} on ${dayS(e.release_after)} unless you respond.</b></p>`:''}<p><b>${ins?'Has the inspection been completed? Are you satisfied with the inspector?':'Have you completed the inspection / discussion with the agent? Are you satisfied to proceed?'}</b></p><div class="row"><button class="btn" onclick="escRelease(${e.id})">Yes, Release Funds to ${who}</button><button class="btn o" onclick="escDispute(${e.id})">No, I have a problem</button></div><p class="mu">If you do not respond, funds are released automatically on ${dayS(e.release_after)}.</p>`:''}
     ${e.status=='held'&&!mine?`<p class="mu"><b>Waiting for client confirmation.</b> You cannot release these funds yourself. They are paid out when the client confirms, or automatically on ${dayS(e.release_after)}.</p>`:''}
@@ -1046,7 +1053,7 @@ async function payM(){
   };
   const f=ESF=='all'?E:ESF=='released'?E.filter(e=>['released','refunded'].includes(e.status)):E.filter(e=>e.status==ESF);
   const chips=[['held','Funds Held'],['disputed','Disputed'],['released','Released'],['all','All']].map(([k,n])=>`<button class="tab${ESF==k?' on':''}" onclick="ESF='${k}';payM()">${n}</button>`).join('');
-  openF(payee?'💼 Escrow Payments':'💼 Secure payments',`<p class="mu" style="margin-top:0">${payee?'Escrow protects both you and your clients. Funds are released once the client confirms.':'Your money is protected until you confirm.'}</p><div class="tabs" style="margin-top:0">${chips}</div>${error?`<p class="er">${esc(error.message)}</p>`:f.length?f.map(card).join(''):'<p class="mu">Nothing here yet.</p>'}`,accM);
+  openF(payee?'💼 Escrow Payments':'💼 Secure payments',`<p class="mu" style="margin-top:0">${payee?'Escrow protects both you and your clients. Funds are released once the client confirms.':'Your money is protected until you confirm.'}</p><div class="tabs" style="margin-top:0">${chips}</div>${error?`<p class="er">${esc(error.message)}</p>`:f.length?f.map(card).join(''):E.length?'<p class="mu">No payments in this filter.</p>':payee?'<p class="mu">No escrow payments yet. When a client pays through Nesta, it will appear here.</p>':'<p class="mu">No secure payments yet. When you pay an agent through Nesta, it will appear here.</p>'}`,accM);
 }
 function escRelease(id){
   openM(`<h2>Release the funds?</h2><p>Are you satisfied with the agent and ready to proceed? Releasing the funds means the agent gets paid.</p><button class="btn w" onclick="escDoRelease(${id})">Yes, Release Funds</button><button class="btn o w" onclick="payM()">Cancel</button><p id="er" class="er"></p>`);
@@ -1080,6 +1087,15 @@ async function escCheck(){
     const soon=E.find(e=>e.release_after&&new Date(e.release_after)-Date.now()<48*36e5);
     toast(soon?`⚠ "${String(soon.title).slice(0,40)}" will be released on ${dayS(soon.release_after)} unless you respond. Tap to review.`:'🔒 Have you completed the inspection or discussion? Tap to confirm or report a problem.',null,payM);
   }catch(e){}
+}
+
+function agentCard(e,nm){
+  const ins=e.kind=='inspection',cl=esc(nm[e.client_id]||'Client');
+  const line=e.status=='held'?`<p class="mu" style="margin:0"><b>Waiting for client confirmation.</b> You cannot release these funds yourself. They are paid out when the client confirms, or automatically on ${dayS(e.release_after)}.</p>`
+    :e.status=='released'?`<p class="mu" style="margin:0"><b>Released on ${dayS(e.released_at)}.</b>${e.auto_released?' (automatic release)':''}</p>`
+    :e.status=='refunded'?`<p class="mu" style="margin:0"><b>Refunded to the client on ${dayS(e.released_at)}.</b></p>`
+    :e.status=='disputed'?`<p class="er" style="margin:0">Dispute: ${esc(e.dispute_reason||'')}. Nesta will review and contact you.</p>`:'';
+  return `<div class="note"><b>${esc(e.title)}</b>${ins?' <span class="chip">Inspection</span>':''}<div class="facts" style="margin:8px 0"><div><span>Client</span><b>${cl}</b></div><div><span>Amount</span><b>${N(e.total)}</b></div><div><span>Date</span><b>${dayS(e.paid_at||e.created_at)}</b></div><div><span>Status</span><b>${EST[e.status]||esc(e.status)}${e.mode=='test'?' · 🧪':''}</b></div></div>${line}${e.admin_note?`<p class="mu">Nesta note: ${esc(e.admin_note)}</p>`:''}</div>`;
 }
 
 loadAll();
