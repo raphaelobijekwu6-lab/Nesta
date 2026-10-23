@@ -189,6 +189,12 @@ footer a{color:var(--pr)}
 .ctc{display:flex;flex-direction:column;gap:8px;width:100%}
 .cta .btn.pay{width:100%;flex:none;background:var(--pay);color:var(--payt);font-size:17px;padding:15px;box-shadow:0 4px 14px #1b7f4f55}
 .cta .btn.sm{width:100%;flex:none;padding:10px;font-size:14px}
+.mvb{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:4px 14px}
+.mvr{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--br)}
+.mvr small{display:block;color:var(--mu);font-size:11px;font-weight:400}
+.mvt{display:flex;justify-content:space-between;align-items:center;padding:12px 0 8px}
+.mvt span{font-weight:700}.mvt b{font:800 22px Georgia,serif;color:var(--pr)}
+.mv{font-size:13px;margin:2px 0}.mv b{color:var(--pr)}
 </style>
 </head>
 <body>
@@ -300,7 +306,7 @@ function render(){
 function card(l){
   const m=(l.media||[]).find(x=>x.kind=='image'),sp=isSp(l),MD={buy:'For sale',rent:'For rent',flip:'Flip deal'};
   const specs=[l.beds?`🛏 ${l.beds} bd`:'',l.baths?`🛁 ${l.baths} ba`:'',l.size_sqm?`📐 ${Number(l.size_sqm).toLocaleString()} sqm`:''].filter(Boolean).join(' <i>|</i> ')||esc(l.type);
-  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${vb(l)}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?'<small> /yr</small>':''}</div><div class="ad">${esc(l.title)}</div><div class="mu">${l.area?esc(l.area)+', ':''}${esc(l.city)}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div><div class="spc">${specs}</div><span class="pill ${l.mode}">${MD[l.mode]}${l.mode=='flip'?' 🔥':''}</span></div>${cact(l)}</div>`;
+  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${vb(l)}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?'<small> /yr</small>':''}</div>${l.mode=='rent'?mvLine(l):''}<div class="ad">${esc(l.title)}</div><div class="mu">${l.area?esc(l.area)+', ':''}${esc(l.city)}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div><div class="spc">${specs}</div><span class="pill ${l.mode}">${MD[l.mode]}${l.mode=='flip'?' 🔥':''}</span></div>${cact(l)}</div>`;
 }
 function drawMap(r){
   const el=$('map');
@@ -373,7 +379,7 @@ function show(id){
   const flip=l.mode=='flip'&&l.arv?`<div class="sec"><h3>Flip economics</h3><div class="note" style="margin:0">Buy ${N(l.price)} + repairs ${N(l.repair||0)} → resell ${N(l.arv)}<br><b style="font-size:18px">Potential profit: ${N(l.arv-l.price-(l.repair||0))}</b><br><span class="mu">Estimate only. Do your own checks.</span></div></div>`:'';
   const exact=exactLoc(l),sim=L.filter(x=>x.id!=l.id&&(x.city==l.city||x.type==l.type)).sort((a,b)=>Math.abs(a.price-l.price)-Math.abs(b.price-l.price)).slice(0,6);
   const badge=v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'<span class="mu">Unverified</span>';
-  const pay=l.mode=='buy'?`<div class="sec"><h3>Estimated monthly payment</h3><div class="note" style="margin:0"><div class="row3"><div><span class="mu">Down payment %</span><input id="md" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Interest %</span><input id="mr" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Years</span><input id="my" type="number" value="15" oninput="calcPay(${l.price})"></div></div><div class="dp" id="mpay" style="font-size:26px"></div><span class="mu">Down payment <b id="mdp"></b> · Estimate only. Real rates depend on your bank or mortgage scheme.</span></div></div>`:l.mode=='rent'?`<div class="mu">≈ ${N(Math.round(l.price/12))} per month</div>`:'';
+  const pay=l.mode=='buy'?`<div class="sec"><h3>Estimated monthly payment</h3><div class="note" style="margin:0"><div class="row3"><div><span class="mu">Down payment %</span><input id="md" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Interest %</span><input id="mr" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Years</span><input id="my" type="number" value="15" oninput="calcPay(${l.price})"></div></div><div class="dp" id="mpay" style="font-size:26px"></div><span class="mu">Down payment <b id="mdp"></b> · Estimate only. Real rates depend on your bank or mortgage scheme.</span></div></div>`:l.mode=='rent'?`<div class="mu">≈ ${N(Math.round(l.price/12))} per month</div>${mvLine(l)}`:'';
   openD(`<div class="dbar"><button style="left:12px" onclick="closeM()">←</button><button style="right:112px" onclick="shareL(${l.id})">⤴</button><button style="right:62px" onclick="fav(${l.id});this.textContent=FV.has(${l.id})?'♥':'♡'">${FV.has(l.id)?'♥':'♡'}</button><button style="right:12px" onclick="closeM()">×</button></div>
   <div class="gw"><div class="gl" onscroll="gc(this,${ms.length})">${slides}</div>${ms.length?`<span class="cnt" id="gcnt">1 / ${ms.length}</span>`:''}<div class="gb"><span>${MODE[l.mode]}</span>${isSp(l)?'<span>SPONSORED</span>':''}</div></div>
   <div class="dsheet">
@@ -383,10 +389,9 @@ function show(id){
    <div><b>${esc(l.title)}</b></div>
    <div class="mu">📍 ${l.area?esc(l.area)+', ':''}${esc(l.city)} · ${ago}</div>
    <div style="margin-top:10px"><span class="chip">${esc(l.type)}</span>${l.title_doc?`<span class="chip">📄 ${esc(l.title_doc)}</span>`:''}${v>=1?'<span class="chip">✔ Verified lister</span>':''}</div>
-   <div class="sec"><h3>About this property</h3><div class="abt" id="abt">${esc(l.description||'No description yet.')}</div>${(l.description||'').length>220?'<a class="mu" style="cursor:pointer;text-decoration:underline" onclick="$(\'abt\').classList.toggle(\'open\');this.remove()">Show more</a>':''}</div>
+   ${feesBlk(l)}<div class="sec"><h3>About this property</h3><div class="abt" id="abt">${esc(l.description||'No description yet.')}</div>${(l.description||'').length>220?'<a class="mu" style="cursor:pointer;text-decoration:underline" onclick="$(\'abt\').classList.toggle(\'open\');this.remove()">Show more</a>':''}</div>
    <div class="sec"><h3>Facts &amp; features</h3><div class="facts">${fact('Type',l.type)}${fact('Bedrooms',l.beds)}${fact('Bathrooms',l.baths)}${fact('Size',l.size_sqm?l.size_sqm+' sqm':'')}${fact('Price per sqm',sqmP)}${fact('Title document',l.title_doc)}${fact('Listing',MODE[l.mode])}${fact('State',l.city)}</div>${(l.features||[]).length?`<div style="margin-top:12px">${l.features.map(f=>`<span class="chip">✓ ${esc(f)}</span>`).join('')}</div>`:''}</div>
    ${flip}
-   ${feesBlk(l)}
    ${pay&&l.mode=='buy'?pay:''}
    <div class="sec"><h3>Location</h3><div id="dmap"></div><div class="mu" style="margin:6px 0">${exact?'Pin placed by the lister':'Approximate area (the lister did not drop a pin)'}</div><div class="row"><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}">Google Maps</a><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=${l.lat},${l.lng}">Apple Maps</a></div></div>
    <div class="sec"><h3>Listed by</h3><div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
@@ -406,8 +411,9 @@ function postM(l){
   if(!['agent','landlord'].includes(prof?.role)){alert('Only agents and landlords can list properties. Create an account with that role.');return}
   if(!isAdm&&(prof.kyc_level||0)<1){refreshProf().then(()=>{if((prof.kyc_level||0)>=1)postM(l);else{alert('Complete Basic Verification to start listing (5–10 mins).');kycM()}});return}
   EDIT=l||null;EM=l?[...(l.media||[])]:[];PG=l&&exactLoc(l)?[l.lat,l.lng]:null;setTimeout(initPin,80);
-  openM(`<h2>${l?'Edit listing':'List a property'}</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pba" type="number" placeholder="Bathrooms"><input id="psq" type="number" placeholder="Size (sqm)"></div><select id="ptd"><option value="">Title document (if any)</option>${TDOCS.map(t=>`<option>${t}</option>`).join('')}</select><label class="mu">Rent fees (optional). Lets clients pay securely through Nesta Escrow</label><div class="row3"><input id="ffa" type="number" placeholder="Agency fee ₦"><input id="ffg" type="number" placeholder="Agreement fee ₦"><input id="ffc" type="number" placeholder="Caution fee ₦"></div><label class="mu">Features</label><div class="chips">${FEATS.map(f=>`<label class="fc"><input type="checkbox" value="${f}"> ${f}</label>`).join('')}</div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><div id="em"></div><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">${l?'Save changes':'Publish'}</button><p id="er" class="er"></p>`);
+  openM(`<h2>${l?'Edit listing':'List a property'}</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm" onchange="rfToggle()"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦" oninput="mvPrev()"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pba" type="number" placeholder="Bathrooms"><input id="psq" type="number" placeholder="Size (sqm)"></div><select id="ptd"><option value="">Title document (if any)</option>${TDOCS.map(t=>`<option>${t}</option>`).join('')}</select><div id="rf" style="display:none"><label class="mu"><b>Move-in fees.</b> Tenants see the full total before they pay.</label><div class="row3"><input id="ffa" type="number" placeholder="Agency fee ₦" oninput="mvPrev()"><input id="ffg" type="number" placeholder="Agreement fee ₦" oninput="mvPrev()"><input id="ffc" type="number" placeholder="Caution fee ₦" oninput="mvPrev()"></div><button class="btn o w" type="button" onclick="suggestFees()">Use common fees (10% agency + 10% agreement)</button><div class="note" id="mvp"></div></div><label class="mu">Features</label><div class="chips">${FEATS.map(f=>`<label class="fc"><input type="checkbox" value="${f}"> ${f}</label>`).join('')}</div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><div id="em"></div><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">${l?'Save changes':'Publish'}</button><p id="er" class="er"></p>`);
   if(l)fillForm(l);
+  rfToggle();
 }
 function geo(){
   navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{PG=[p.coords.latitude,p.coords.longitude];if(pmap){pmap.setView(PG,16);pmk.setLatLng(PG)}$('pg').textContent='📍 Location set. Drag the pin to adjust.'},()=>$('pg').textContent='Could not get your location. Drag the pin instead.'):0;
@@ -447,7 +453,7 @@ async function post(){
     }
     b.textContent='Saving…';
     const c=PG||((EDIT&&EDIT.city==city&&EDIT.lat!=null)?[EDIT.lat,EDIT.lng]:(CC[city]||CC.Lagos));
-    const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,baths:parseInt($('pba').value)||0,size_sqm:parseInt($('psq').value)||null,title_doc:$('ptd').value||null,agency_fee:parseFloat($('ffa').value)||null,agreement_fee:parseFloat($('ffg').value)||null,caution_fee:parseFloat($('ffc').value)||null,features:[...document.querySelectorAll('.fc input:checked')].map(i=>i.value),lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
+    const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,baths:parseInt($('pba').value)||0,size_sqm:parseInt($('psq').value)||null,title_doc:$('ptd').value||null,agency_fee:fee('ffa'),agreement_fee:fee('ffg'),caution_fee:fee('ffc'),features:[...document.querySelectorAll('.fc input:checked')].map(i=>i.value),lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
     let q;
     if(EDIT){delete row.owner_id;q=await sb.from('listings').update(row).eq('id',EDIT.id).select('*,profiles!owner_id(name,verified,role,kyc_level)').single()}
     else q=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified,role,kyc_level)').single();
@@ -945,7 +951,7 @@ function fillForm(l){
   $('pb').value=l.beds||'';$('pba').value=l.baths||'';$('psq').value=l.size_sqm||'';$('ptd').value=l.title_doc||'';$('ffa').value=l.agency_fee||'';$('ffg').value=l.agreement_fee||'';$('ffc').value=l.caution_fee||'';
   $('pv').value=l.arv||'';$('pr').value=l.repair||'';$('pd').value=l.description||'';
   document.querySelectorAll('.fc input').forEach(i=>i.checked=(l.features||[]).includes(i.value));
-  renderEM();
+  renderEM();rfToggle();
 }
 function renderEM(){
   const e=$('em');if(!e)return;
@@ -999,16 +1005,17 @@ const EST={awaiting_payment:'⏳ Awaiting payment',held:'🔒 Funds held',releas
 const feeItems=l=>[['Agency fee',l.agency_fee],['Agreement fee',l.agreement_fee],['Caution fee',l.caution_fee]].filter(x=>x[1]>0);
 const escOK=l=>l.mode=='rent'&&feeItems(l).length>0&&l.profiles?.role=='agent'&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
 function feesBlk(l){
-  const it=feeItems(l);if(l.mode!='rent'||!it.length)return '';
-  const tot=it.reduce((a,x)=>a+Number(x[1]),0);
-  return `<div class="sec"><h3>Fees to pay upfront</h3><div class="facts">${it.map(x=>`<div><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div><span>Total</span><b>${N(tot)}</b></div></div>${escOK(l)?`<div class="note">🔒 Pay agency fees securely through ${ESC_NAME}. Your money is protected until you confirm.</div>`:''}</div>`;
+  if(l.mode!='rent')return '';
+  const m=mvCost(l),row=(a,b,sub)=>`<div class="mvr"><span>${a}${sub?`<small>${sub}</small>`:''}</span><b>${b}</b></div>`;
+  if(!m.set)return `<div class="sec"><h3>Total move-in cost</h3><div class="note" style="margin:0"><b>The lister has not listed the fees.</b><br>Rent (1 year): ${N(m.rent)}. Ask for agency, agreement and caution fees in writing before you pay anything, and report hidden charges.</div></div>`;
+  return `<div class="sec"><h3>Total move-in cost</h3><div class="mvb">${row('Rent (1 year)',N(m.rent))}${m.a?row('Agency fee',N(m.a)):''}${m.g?row('Agreement fee',N(m.g)):''}${m.c?row('Caution fee',N(m.c),'Ask the lister if this is refundable'):''}<div class="mvt"><span>Total to pay initially</span><b>${N(m.total)}</b></div></div>${escOK(l)?`<div class="note">🔒 The ${N(m.fees)} in fees can be paid securely through ${ESC_NAME}. Your money is protected until you confirm.</div>`:''}<p class="mu" style="font-size:12px;margin:8px 0 0">Fees are set by the lister. Charged something not listed here? Use Report.</p></div>`;
 }
 async function escMode(){const r=await sb.from('app_settings').select('value').eq('key','escrow_mode').maybeSingle();return r.data?.value||'test'}
 async function escM(lid){
   if(!me)return authM();
   const l=L.find(x=>x.id==lid);if(!l)return;
   const it=[['Agency Fee',l.agency_fee],['Agreement Fee',l.agreement_fee],['Caution / Other fees',l.caution_fee]].filter(x=>x[1]>0),tot=it.reduce((a,x)=>a+Number(x[1]),0),mode=await escMode();
-  openM(`<h2>Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run of the payment flow.</div>':''}<div class="agent" style="margin:8px 0"><div class="av">${esc((l.profiles?.name||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(l.profiles?.name||'Agent')}</b><br><span style="color:var(--ac);font-weight:700">★ Nesta Verified Agent</span></div></div><p class="mu" style="margin-top:0">${esc(l.title)}</p><div class="facts" style="grid-template-columns:1fr">${it.map(x=>`<div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total to be held</b><b>${N(tot)}</b></div></div><p class="mu">Your money is held safely by Nesta. The agent only receives it after you confirm.</p><p class="mu" style="font-size:13px">You can raise a dispute anytime before the funds are released.</p><p class="mu" style="font-size:13px">If you do not respond within ${ESC_DAYS} days, the funds are released to the agent automatically. We warn you 48 hours before.</p><button class="btn w" id="escb" data-l="Pay ${N(tot)} Securely" onclick="escPay(${l.id})">Pay ${N(tot)} Securely</button><p id="er" class="er"></p>`);
+  openM(`<h2>Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run of the payment flow.</div>':''}<div class="agent" style="margin:8px 0"><div class="av">${esc((l.profiles?.name||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(l.profiles?.name||'Agent')}</b><br><span style="color:var(--ac);font-weight:700">★ Nesta Verified Agent</span></div></div><p class="mu" style="margin-top:0">${esc(l.title)}</p><div class="facts" style="grid-template-columns:1fr">${it.map(x=>`<div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total to be held</b><b>${N(tot)}</b></div></div><p class="mu" style="font-size:13px">Total move-in cost including one year's rent: <b>${N(mvCost(l).total)}</b></p><p class="mu" style="font-size:13px">This payment covers the fees only. The rent is paid separately under your tenancy agreement.</p><p class="mu">Your money is held safely by Nesta. The agent only receives it after you confirm.</p><p class="mu" style="font-size:13px">You can raise a dispute anytime before the funds are released.</p><p class="mu" style="font-size:13px">If you do not respond within ${ESC_DAYS} days, the funds are released to the agent automatically. We warn you 48 hours before.</p><button class="btn w" id="escb" data-l="Pay ${N(tot)} Securely" onclick="escPay(${l.id})">Pay ${N(tot)} Securely</button><p id="er" class="er"></p>`);
 }
 async function escPay(lid){
   const b=$('escb');b.disabled=true;b.textContent='Processing…';
@@ -1096,6 +1103,26 @@ function agentCard(e,nm){
     :e.status=='refunded'?`<p class="mu" style="margin:0"><b>Refunded to the client on ${dayS(e.released_at)}.</b></p>`
     :e.status=='disputed'?`<p class="er" style="margin:0">Dispute: ${esc(e.dispute_reason||'')}. Nesta will review and contact you.</p>`:'';
   return `<div class="note"><b>${esc(e.title)}</b>${ins?' <span class="chip">Inspection</span>':''}<div class="facts" style="margin:8px 0"><div><span>Client</span><b>${cl}</b></div><div><span>Amount</span><b>${N(e.total)}</b></div><div><span>Date</span><b>${dayS(e.paid_at||e.created_at)}</b></div><div><span>Status</span><b>${EST[e.status]||esc(e.status)}${e.mode=='test'?' · 🧪':''}</b></div></div>${line}${e.admin_note?`<p class="mu">Nesta note: ${esc(e.admin_note)}</p>`:''}</div>`;
+}
+
+/* ---------- total move-in cost ---------- */
+function mvCost(l){
+  const rent=Number(l.price)||0,a=Number(l.agency_fee)||0,g=Number(l.agreement_fee)||0,c=Number(l.caution_fee)||0;
+  return {rent,a,g,c,fees:a+g+c,total:rent+a+g+c,set:(a+g+c)>0};
+}
+function mvLine(l){const m=mvCost(l);return m.set?`<div class="mv">Total move-in <b>${N(m.total)}</b> <span class="mu">rent + fees</span></div>`:'<div class="mv mu">Fees not listed</div>'}
+const fee=id=>$('pm').value=='rent'?(parseFloat($(id).value)||null):null;
+function rfToggle(){
+  const r=$('pm').value=='rent';$('rf').style.display=r?'':'none';$('pp').placeholder=r?'Annual rent ₦':'Price ₦';mvPrev();
+}
+function mvPrev(){
+  const e=$('mvp');if(!e)return;
+  const rent=+$('pp').value||0,a=+$('ffa').value||0,g=+$('ffg').value||0,c=+$('ffc').value||0;
+  e.innerHTML=rent?`Tenants will see: <b>${N(rent+a+g+c)}</b> total to pay initially<br><span class="mu">Rent ${N(rent)} + agency ${N(a)} + agreement ${N(g)} + caution ${N(c)}</span>`:'Enter the annual rent to see the total tenants will pay.';
+}
+function suggestFees(){
+  const rent=+$('pp').value||0;if(!rent){alert('Enter the annual rent first.');return}
+  $('ffa').value=Math.round(rent*0.1);$('ffg').value=Math.round(rent*0.1);mvPrev();
 }
 
 loadAll();
