@@ -195,6 +195,7 @@ footer a{color:var(--pr)}
 .mvt{display:flex;justify-content:space-between;align-items:center;padding:12px 0 8px}
 .mvt span{font-weight:700}.mvt b{font:800 22px Georgia,serif;color:var(--pr)}
 .mv{font-size:13px;margin:2px 0}.mv b{color:var(--pr)}
+.mvc{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--mu);margin:10px 2px 0}.mvc input{width:auto;margin:3px 0 0}
 </style>
 </head>
 <body>
@@ -211,10 +212,11 @@ footer a{color:var(--pr)}
 <input id="max" type="number" placeholder="Max price ₦" oninput="render()">
 <button class="btn go" onclick="render();$('grid').scrollIntoView({behavior:'smooth',block:'start'})">Search</button>
 </div>
+<label class="mvc"><input type="checkbox" id="mvt" onchange="render()"> For rentals, my budget is the <b>total move-in cost</b> (rent + fees). Shows only listings with fees listed.</label>
 <div class="tabs" id="tabs"></div>
 <div class="join"><button class="btn o" onclick="joinAgent()">Join as Agent · List Property</button></div>
 </section>
-<div class="sh"><h2>Homes for you <span class="vl">Verified Listings</span></h2><span class="mu" id="rc"></span></div>
+<div class="sh"><h2>Homes for you <span class="vl">Verified Listings</span></h2><span style="display:flex;gap:8px;align-items:center"><span class="mu" id="rc"></span><select id="sort" onchange="render()" style="width:auto;margin:0;padding:6px 8px;font-size:13px"><option value="">Recommended</option><option value="mv">Lowest move-in cost</option><option value="plh">Price: low to high</option><option value="phl">Price: high to low</option><option value="new">Newest</option></select></span></div>
 <div id="map"></div>
 <div class="grid" id="grid"><div class="empty">Loading…</div></div>
 <section class="bn">
@@ -278,10 +280,12 @@ async function loadAll(){
 
 /* ---------- list + map ---------- */
 function list(){
-  const c=$('city').value,t=$('type').value,mx=+$('max').value||1e15,qq=($('q').value||'').trim().toLowerCase();
-  let r=L.filter(l=>(mode=='all'||l.mode==mode)&&(!c||l.city==c)&&(!t||l.type==t)&&(!qq||[l.title,l.area,l.city,l.description,l.type].join(' ').toLowerCase().includes(qq))&&l.price<=mx&&(!vo||l.profiles?.verified)&&(!sv||FV.has(l.id)));
+  const useTot=$('mvt')?.checked,c=$('city').value,t=$('type').value,mx=+$('max').value||1e15,qq=($('q').value||'').trim().toLowerCase();
+  let r=L.filter(l=>(mode=='all'||l.mode==mode)&&(!c||l.city==c)&&(!t||l.type==t)&&(!qq||[l.title,l.area,l.city,l.description,l.type].join(' ').toLowerCase().includes(qq))&&(useTot&&l.mode=='rent'?(mvCost(l).set&&mvCost(l).total<=mx):l.price<=mx)&&(!vo||l.profiles?.verified)&&(!sv||FV.has(l.id)));
   r.forEach(l=>{l._d=near&&l.lat!=null?km(near,[l.lat,l.lng]):null});
   if(near)r.sort((a,b)=>(a._d??1e9)-(b._d??1e9));else r.sort((a,b)=>lvl(b.profiles)-lvl(a.profiles));
+  const so=$('sort')?.value;
+  if(so){const key=l=>so=='mv'&&l.mode=='rent'?mvCost(l).total:Number(l.price);if(so=='new')r.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));else r.sort((a,b)=>so=='phl'?key(b)-key(a):key(a)-key(b))}
   const sp=r.filter(isSp).slice(0,3);
   return sp.concat(r.filter(l=>!sp.includes(l)));
 }
