@@ -196,6 +196,7 @@ footer a{color:var(--pr)}
 .mvt span{font-weight:700}.mvt b{font:800 22px Georgia,serif;color:var(--pr)}
 .mv{font-size:13px;margin:2px 0}.mv b{color:var(--pr)}
 .mvc{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--mu);margin:10px 2px 0}.mvc input{width:auto;margin:3px 0 0}
+.btn.pay{background:var(--pay);color:var(--payt)}
 </style>
 </head>
 <body>
@@ -402,7 +403,7 @@ function show(id){
    <div class="sec"><div class="note" style="margin:0"><b>🔎 Don't pay heavy inspection fees</b><br>Book a Nesta inspector for a flat fee and get photos, video and a report.<button class="btn w" onclick="bookM(${l.id})">Book an inspection</button></div></div>
    ${sim.length?`<div class="sec"><h3>Similar homes</h3><div class="sim">${sim.map(x=>{const m=(x.media||[]).find(q=>q.kind=='image');return `<div class="sc" onclick="show(${x.id})"><div class="im"${m?` style="background-image:url('${mu(m.path)}')"`:''}></div><div class="tx"><b>${N(x.price)}</b><br><span class="mu">${esc(x.title.slice(0,32))}<br>${esc(x.city)}</span></div></div>`}).join('')}</div></div>`:''}
    <div class="sec"><div class="safe"><b>Stay safe.</b> Never send money before you have inspected the property and checked the documents. Nesta never asks for payment in chat.</div><p class="c mu"><a style="cursor:pointer;text-decoration:underline" onclick="reportL(${l.id})">⚠ Report this listing</a></p></div>
-  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
+  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:dealOK(l)?`<div class="ctc"><button class="btn pay" onclick="dealM(${l.id},'${l.owner_id}','pay')">🔒 Pay Securely with Nesta Escrow<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><div class="row"><button class="btn o sm" onclick="bookM(${l.id})">🔎 Book Inspection</button><button class="btn o sm" onclick="chat(${l.id})">💬 Chat</button></div></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
   setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price)},80);
 }
 async function del(id){
@@ -524,7 +525,7 @@ async function thread(id,fromInbox){
   if(!TH.find(x=>x.id==id))await loadChat();
   if(ch){sb.removeChannel(ch);ch=null}
   SEEN=new Set();
-  openF(chatTitle(id),`<div id="ms" class="ms"></div><div class="fin"><input id="mi" placeholder="Type a message" onkeydown="if(event.key=='Enter')send(${id})"><button class="btn" style="flex:0 0 auto" onclick="send(${id})">Send</button></div>`,fromInbox?()=>inbox(INBL):null,true,`<button class="fx" style="font-size:16px" title="Report" onclick="reportT(${id})">⚠</button>`);
+  openF(chatTitle(id),`<div id="ms" class="ms"></div><div class="fin"><input id="mi" placeholder="Type a message" onkeydown="if(event.key=='Enter')send(${id})"><button class="btn" style="flex:0 0 auto" onclick="send(${id})">Send</button></div>`,fromInbox?()=>inbox(INBL):null,true,`<button class="fx" style="font-size:16px" title="Escrow payment" onclick="dealFromThread(${id})">🔒</button><button class="fx" style="font-size:16px" title="Report" onclick="reportT(${id})">⚠</button>`);
   const {data}=await sb.from('messages').select('*').eq('thread_id',id).order('created_at');
   curTh=id;(data||[]).forEach(addMsg);markRead(id);
   ch=sb.channel('t'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'thread_id=eq.'+id},p=>addMsg(p.new)).subscribe();
@@ -1005,8 +1006,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&me)refres
 
 /* ---------- Nesta Escrow (TEST MODE until live payments are set up) ---------- */
 const ESC_NAME='Nesta Escrow',ESC_DAYS=7;
-const EST={awaiting_payment:'⏳ Awaiting payment',held:'🔒 Funds held',released:'✔ Released to agent',refunded:'↩ Refunded to client',disputed:'⚠ Disputed'};
+const EST={proposed:'📨 Awaiting acceptance',awaiting_payment:'⏳ Awaiting payment',held:'🔒 Funds held',released:'✔ Released',refunded:'↩ Refunded',disputed:'⚠ Disputed',declined:'✖ Declined',cancelled:'✖ Cancelled'};
 const feeItems=l=>[['Agency fee',l.agency_fee],['Agreement fee',l.agreement_fee],['Caution fee',l.caution_fee]].filter(x=>x[1]>0);
+const dealOK=l=>['agent','landlord'].includes(l.profiles?.role)&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
 const escOK=l=>l.mode=='rent'&&feeItems(l).length>0&&l.profiles?.role=='agent'&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
 function feesBlk(l){
   if(l.mode!='rent')return '';
@@ -1043,28 +1045,41 @@ async function escNotify(l,eid){
   }catch(e){}
 }
 const dayS=d=>new Date(d).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'});
-let ESF='held';
+let ESF='held',PF='all';
 async function payM(){
   if(!me)return authM();
   await sb.rpc('escrow_sweep');
   const {data,error}=await sb.from('escrows').select('*').or(`client_id.eq.${me.id},agent_id.eq.${me.id}`).order('created_at',{ascending:false});
   const E=data||[],ids=[...new Set(E.flatMap(e=>[e.client_id,e.agent_id]).filter(i=>i&&i!=me.id))],nm={};
   if(ids.length){const q=await sb.from('profiles').select('id,name').in('id',ids);(q.data||[]).forEach(x=>nm[x.id]=x.name)}
-  const payee=['agent','inspector'].includes(prof?.role);
-  const card=e=>{
-    const mine=e.client_id==me.id,ins=e.kind=='inspection',who=ins?'Inspector':'Agent',
-      other=esc(mine?(nm[e.agent_id]||(ins?'to be assigned':'')):(nm[e.client_id]||'')),
-      soon=e.status=='held'&&e.release_after&&new Date(e.release_after)-Date.now()<48*36e5;
-    if(!mine)return agentCard(e,nm);
-    return `<div class="note"><b>${esc(e.title)}</b><br>${mine?'You pay':'You receive'} <b>${N(e.total)}</b> · ${mine?who:'Client'}: ${other}<br>${EST[e.status]||esc(e.status)}${e.mode=='test'?' · 🧪 test':''} · ${dayS(e.paid_at||e.created_at)}<br><span class="mu">${(e.items||[]).map(i=>esc(i.label)+' '+N(i.amount)).join(' · ')}</span>
-    ${e.status=='held'&&mine?`${soon?`<p style="color:#b45309"><b>⚠ Funds will be released to the ${who.toLowerCase()} on ${dayS(e.release_after)} unless you respond.</b></p>`:''}<p><b>${ins?'Has the inspection been completed? Are you satisfied with the inspector?':'Have you completed the inspection / discussion with the agent? Are you satisfied to proceed?'}</b></p><div class="row"><button class="btn" onclick="escRelease(${e.id})">Yes, Release Funds to ${who}</button><button class="btn o" onclick="escDispute(${e.id})">No, I have a problem</button></div><p class="mu">If you do not respond, funds are released automatically on ${dayS(e.release_after)}.</p>`:''}
-    ${e.status=='held'&&!mine?`<p class="mu"><b>Waiting for client confirmation.</b> You cannot release these funds yourself. They are paid out when the client confirms, or automatically on ${dayS(e.release_after)}.</p>`:''}
-    ${e.status=='released'&&mine?'<p class="mu">Released. The '+who.toLowerCase()+' receives the money within 24 hours.</p>':''}
-    ${e.status=='disputed'?`<p class="er">Dispute: ${esc(e.dispute_reason||'')}. Nesta will review and contact you.</p>`:''}${e.admin_note?`<p class="mu">Nesta note: ${esc(e.admin_note)}</p>`:''}</div>`;
-  };
-  const f=ESF=='all'?E:ESF=='released'?E.filter(e=>['released','refunded'].includes(e.status)):E.filter(e=>e.status==ESF);
-  const chips=[['held','Funds Held'],['disputed','Disputed'],['released','Released'],['all','All']].map(([k,n])=>`<button class="tab${ESF==k?' on':''}" onclick="ESF='${k}';payM()">${n}</button>`).join('');
-  openF(payee?'💼 Escrow Payments':'💼 Secure payments',`<p class="mu" style="margin-top:0">${payee?'Escrow protects both you and your clients. Funds are released once the client confirms.':'Your money is protected until you confirm.'}</p><div class="tabs" style="margin-top:0">${chips}</div>${error?`<p class="er">${esc(error.message)}</p>`:f.length?f.map(card).join(''):E.length?'<p class="mu">No payments in this filter.</p>':payee?'<p class="mu">No escrow payments yet. When a client pays through Nesta, it will appear here.</p>':'<p class="mu">No secure payments yet. When you pay an agent through Nesta, it will appear here.</p>'}`,accM);
+  const payee=['agent','inspector','landlord'].includes(prof?.role);
+  const todo=e=>['proposed','awaiting_payment'].includes(e.status);
+  const f=PF=='all'?E:PF=='todo'?E.filter(todo):PF=='released'?E.filter(e=>['released','refunded'].includes(e.status)):E.filter(e=>e.status==PF);
+  const nt=E.filter(todo).length;
+  const chips=[['todo','Needs action'+(nt?' ('+nt+')':'')],['held','Funds Held'],['disputed','Disputed'],['released','Released'],['all','All']].map(([k,n])=>`<button class="tab${PF==k?' on':''}" onclick="PF='${k}';payM()">${n}</button>`).join('');
+  openF(payee?'💼 Escrow Payments':'💼 Secure payments',`<p class="mu" style="margin-top:0">${payee?'Escrow protects both you and your clients. Funds are released once the payer confirms.':'Your money is protected until you confirm.'}</p><div class="tabs" style="margin-top:0">${chips}</div>${error?`<p class="er">${esc(error.message)}</p>`:f.length?f.map(e=>escCard(e,nm)).join(''):E.length?'<p class="mu">No payments in this filter.</p>':payee?'<p class="mu">No escrow payments yet. When a client pays through Nesta, it will appear here.</p>':'<p class="mu">No secure payments yet. When you pay through Nesta, it will appear here.</p>'}`,accM);
+}
+function escCard(e,nm){
+  const mine=e.client_id==me.id,ins=e.kind=='inspection',deal=e.kind=='deal',iProp=e.proposed_by==me.id;
+  const who=ins?'Inspector':deal?'Receiver':'Agent';
+  const other=esc((mine?nm[e.agent_id]:nm[e.client_id])||(ins?'to be assigned':'the other person'));
+  const soon=e.status=='held'&&e.release_after&&new Date(e.release_after)-Date.now()<48*36e5;
+  const terms=deal?`<p class="mu" style="margin:6px 0 0">${esc(e.description||'')}<br><b>${e.release_days?'Auto-release '+e.release_days+' days after payment if there is no response.':'No automatic release: the payer must confirm.'}</b></p>`:'';
+  let act='';
+  if(e.status=='proposed'){
+    act=iProp?`<p class="mu"><b>Waiting for ${other} to accept.</b> No money moves until they agree.</p><button class="btn o w" onclick="escRespond(${e.id},'cancel')">Cancel request</button>`
+      :`<p><b>${other} sent you an escrow request.</b></p><div class="row"><button class="btn" onclick="escRespond(${e.id},'accept',${mine})">${mine?'Accept &amp; pay '+N(e.total):'Accept'}</button><button class="btn o" onclick="escRespond(${e.id},'decline')">Decline</button></div>`;
+  }else if(e.status=='awaiting_payment'){
+    act=mine?`<button class="btn pay w" onclick="escPayM(${e.id})">Pay ${N(e.total)} Securely</button><button class="btn o w" onclick="escRespond(${e.id},'cancel')">Cancel</button>`
+      :`<p class="mu"><b>Waiting for ${other} to pay.</b></p><button class="btn o w" onclick="escRespond(${e.id},'cancel')">Cancel request</button>`;
+  }else if(e.status=='held'){
+    act=mine?`${soon?`<p style="color:#b45309"><b>⚠ Funds will be released to the ${who.toLowerCase()} on ${dayS(e.release_after)} unless you respond.</b></p>`:''}<p><b>${ins?'Has the inspection been completed? Are you satisfied with the inspector?':deal?'Has everything agreed for this payment been done? Are you satisfied to release the funds?':'Have you completed the inspection / discussion with the agent? Are you satisfied to proceed?'}</b></p><div class="row"><button class="btn" onclick="escRelease(${e.id})">Yes, Release Funds to ${who}</button><button class="btn o" onclick="escDispute(${e.id})">No, I have a problem</button></div><p class="mu">${e.release_after?'If you do not respond, funds are released automatically on '+dayS(e.release_after)+'.':'There is no automatic release. Funds stay held until you confirm, or Nesta decides a dispute.'}</p>`
+      :`<p class="mu"><b>Waiting for client confirmation.</b> You cannot release these funds yourself. ${e.release_after?'They are paid out when the payer confirms, or automatically on '+dayS(e.release_after)+'.':'They are paid out when the payer confirms, or when Nesta decides a dispute.'}</p>`;
+  }else if(e.status=='released'){
+    act=mine?`<p class="mu">Released. The ${who.toLowerCase()} receives the money within 24 hours.</p>`:`<p class="mu"><b>Released on ${dayS(e.released_at)}.</b>${e.auto_released?' (automatic release)':''}</p>`;
+  }else if(e.status=='refunded')act=`<p class="mu"><b>Refunded to the payer on ${dayS(e.released_at)}.</b></p>`;
+  else if(e.status=='disputed')act=`<p class="er">Dispute: ${esc(e.dispute_reason||'')}. Nesta will review and contact you.</p>`;
+  return `<div class="note"><b>${esc(e.title)}</b>${ins?' <span class="chip">Inspection</span>':deal?' <span class="chip">Escrow deal</span>':''}<div class="facts" style="margin:8px 0"><div><span>${mine?who:(deal?'Payer':'Client')}</span><b>${other}</b></div><div><span>${mine?'You pay':'You receive'}</span><b>${N(e.total)}</b></div><div><span>Date</span><b>${dayS(e.paid_at||e.created_at)}</b></div><div><span>Status</span><b>${EST[e.status]||esc(e.status)}${e.mode=='test'?' · 🧪':''}</b></div></div>${terms}${act}${e.admin_note?`<p class="mu">Nesta note: ${esc(e.admin_note)}</p>`:''}</div>`;
 }
 function escRelease(id){
   openM(`<h2>Release the funds?</h2><p>Are you satisfied with the agent and ready to proceed? Releasing the funds means the agent gets paid.</p><button class="btn w" onclick="escDoRelease(${id})">Yes, Release Funds</button><button class="btn o w" onclick="payM()">Cancel</button><p id="er" class="er"></p>`);
@@ -1093,10 +1108,15 @@ async function escCheck(){
   if(!me)return;
   try{
     await sb.rpc('escrow_sweep');
-    const {data}=await sb.from('escrows').select('title,release_after,kind').eq('client_id',me.id).eq('status','held');
+    const {data}=await sb.from('escrows').select('id,title,release_after,status,client_id,proposed_by,total').or(`client_id.eq.${me.id},agent_id.eq.${me.id}`).in('status',['proposed','awaiting_payment','held']);
     const E=data||[];if(!E.length)return;
-    const soon=E.find(e=>e.release_after&&new Date(e.release_after)-Date.now()<48*36e5);
-    toast(soon?`⚠ "${String(soon.title).slice(0,40)}" will be released on ${dayS(soon.release_after)} unless you respond. Tap to review.`:'🔒 Have you completed the inspection or discussion? Tap to confirm or report a problem.',null,payM);
+    const req=E.find(e=>e.status=='proposed'&&e.proposed_by!=me.id);
+    if(req)return toast('📨 You have a new escrow request. Tap to review.',null,payM);
+    const pay=E.find(e=>e.status=='awaiting_payment'&&e.client_id==me.id);
+    if(pay)return toast(`💳 ${N(pay.total)} is waiting for you to pay securely. Tap to continue.`,null,payM);
+    const held=E.filter(e=>e.status=='held'&&e.client_id==me.id);if(!held.length)return;
+    const soon=held.find(e=>e.release_after&&new Date(e.release_after)-Date.now()<48*36e5);
+    toast(soon?`⚠ "${String(soon.title).slice(0,40)}" will be released on ${dayS(soon.release_after)} unless you respond. Tap to review.`:'🔒 Have you completed what was agreed? Tap to confirm or report a problem.',null,payM);
   }catch(e){}
 }
 
@@ -1127,6 +1147,69 @@ function mvPrev(){
 function suggestFees(){
   const rent=+$('pp').value||0;if(!rent){alert('Enter the annual rent first.');return}
   $('ffa').value=Math.round(rent*0.1);$('ffg').value=Math.round(rent*0.1);mvPrev();
+}
+
+/* ---------- escrow for ANY payment between two people ---------- */
+const PURPOSES=['Deposit','Part payment','Full payment','Balance payment','Survey / legal fees','Rent','Other'];
+function dealFromThread(id){
+  const t=TH.find(x=>x.id==id);if(!t)return;
+  dealM(t.listing_id,t.buyer_id==me.id?t.owner_id:t.buyer_id,null);
+}
+function dealM(lid,other,role0){
+  if(!me)return authM();
+  const l=lid?L.find(x=>x.id==lid):null;
+  window.DL={lid:lid||null,other,role:role0||'pay'};
+  const ag=l&&l.owner_id==other?`<div class="agent" style="margin:8px 0"><div class="av">${esc((l.profiles?.name||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(l.profiles?.name||'Agent')}</b><br><span style="color:var(--ac);font-weight:700">${lvl(l.profiles)>=2?'★ Nesta Verified '+esc(ROLE[l.profiles?.role]||''):'✔ Verified'}</span></div></div><p class="mu" style="margin-top:0">${esc(l.title)}</p>`:'';
+  openM(`<h2>🔒 Pay Securely with ${ESC_NAME}</h2>${ag}<div class="note" style="margin-top:0">Use ${ESC_NAME} for any payment between two people: a deposit, a part-payment or the full price. Nesta holds the money until the payer confirms.</div>${role0?'':`<div class="row"><button class="btn" id="dr1" onclick="dealRole('pay')">I will pay</button><button class="btn o" id="dr2" onclick="dealRole('receive')">I will receive</button></div>`}<select id="dp">${PURPOSES.map(x=>`<option>${x}</option>`).join('')}</select><input id="da" type="number" placeholder="Amount ₦"><textarea id="dd" rows="4" maxlength="500" placeholder="What is this payment for? What must happen before the money is released? (for example: survey done, deed signed, keys handed over)"></textarea><select id="drl"><option value="">No automatic release (the payer must confirm)</option><option value="7">Auto-release after 7 days with no response</option><option value="14">Auto-release after 14 days with no response</option><option value="30">Auto-release after 30 days with no response</option></select><p class="mu" style="font-size:13px">The other person must agree before any money moves. You can raise a dispute anytime before the funds are released.</p><div class="note"><b>Buying land or a property?</b> Escrow protects the payment, not the title. Check the documents (C of O, survey, deed of assignment) and use a lawyer before paying large sums.</div><button class="btn pay w" id="dbtn" onclick="dealSend()">Send escrow request</button><p id="er" class="er"></p>`);
+}
+function dealRole(r){window.DL.role=r;$('dr1').className='btn'+(r=='pay'?'':' o');$('dr2').className='btn'+(r=='receive'?'':' o')}
+async function dealSend(){
+  const d=window.DL||{},amount=parseFloat($('da').value),purpose=$('dp').value,descr=$('dd').value.trim(),days=$('drl').value?+$('drl').value:null,role=d.role||'pay';
+  if(!amount||amount<1000)return err('Enter an amount of at least ₦1,000');
+  if(descr.length<10)return err('Describe what the payment is for and what must happen before release');
+  const b=$('dbtn');b.disabled=true;
+  const {data,error}=await sb.rpc('escrow_propose',{p_lid:d.lid,p_other:d.other,p_role:role,p_amount:amount,p_purpose:purpose,p_descr:descr,p_days:days});
+  if(error){err(error.message);b.disabled=false;return}
+  escMsgTo(d.other,d.lid,`🔒 Escrow request: ${N(amount)} for "${purpose}" (ref #${data}). ${role=='pay'?'I will pay':'You will pay'} through ${ESC_NAME}. Please open Secure payments to accept.`);
+  openM(`<h2>✅ Request sent</h2><p>The other person must accept before any money moves. You can follow it under <b>Secure payments</b>.</p><button class="btn w" onclick="payM()">View my secure payments</button><button class="btn o w" onclick="closeM()">Done</button>`);
+}
+async function escMsgTo(other,lid,body){
+  try{
+    let q=sb.from('threads').select('id').or(`and(buyer_id.eq.${me.id},owner_id.eq.${other}),and(buyer_id.eq.${other},owner_id.eq.${me.id})`);
+    q=lid?q.eq('listing_id',lid):q.is('listing_id',null);
+    const {data}=await q.limit(1);let t=data&&data[0];
+    if(!t){const r=await sb.from('threads').insert({listing_id:lid||null,owner_id:other}).select('id').single();t=r.data}
+    if(t)await sb.from('messages').insert({thread_id:t.id,body});
+  }catch(e){}
+}
+async function escMsgFor(id,body){
+  const {data:e}=await sb.from('escrows').select('listing_id,client_id,agent_id').eq('id',id).single();
+  if(e)escMsgTo(e.client_id==me.id?e.agent_id:e.client_id,e.listing_id,body);
+}
+async function escRespond(id,act,pay){
+  if(act=='decline'&&!confirm('Decline this request?'))return;
+  if(act=='cancel'&&!confirm('Cancel this payment request?'))return;
+  const {error}=await sb.rpc('escrow_respond',{eid:id,act});if(error)return alert(error.message);
+  if(act=='accept'){
+    if(pay)return escPayM(id);
+    escMsgFor(id,'✔ I accepted our escrow request. Please make the payment through Nesta Escrow.');
+  }
+  payM();
+}
+async function escPayM(id){
+  const {data:e}=await sb.from('escrows').select('*').eq('id',id).single();
+  if(!e)return alert('Payment not found');
+  const mode=await escMode();
+  openM(`<h2>🔒 Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run.</div>':''}<p class="mu" style="margin-top:0">${esc(e.title)}</p><div class="facts" style="grid-template-columns:1fr"><div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total held in ${ESC_NAME}</b><b>${N(e.total)}</b></div></div>${e.description?`<p class="mu">${esc(e.description)}</p>`:''}<p class="mu">Your money is held safely by Nesta. The receiver only gets it after you confirm. ${e.release_days?'If you do not respond within '+e.release_days+' days after paying, it is released automatically.':'There is no automatic release.'}</p><p class="mu" style="font-size:13px">You can raise a dispute anytime before the funds are released.</p><button class="btn pay w" id="escb" onclick="escPayRun(${id})">Pay ${N(e.total)} Securely</button><p id="er" class="er"></p>`);
+}
+async function escPayRun(id){
+  const b=$('escb');b.disabled=true;b.textContent='Processing…';
+  try{
+    if(await escMode()!='test')throw new Error('Online payment is not switched on yet.');
+    const r=await sb.rpc('escrow_test_pay',{eid:id});if(r.error)throw r.error;
+    escMsgFor(id,`🔒 I paid into ${ESC_NAME} (ref #${id}). Please go ahead with what we agreed.`);
+    openM(`<h2>✅ Payment successful</h2><p>Your funds are now safely held in ${ESC_NAME}. We have notified the receiver.</p><p class="mu">Reference #${id}<br>🧪 Test mode: no real money moved.</p><button class="btn w" onclick="payM()">View my secure payments</button><button class="btn o w" onclick="closeM()">Done</button>`);
+  }catch(e){err(e.message||String(e));b.disabled=false;b.textContent='Pay Securely'}
 }
 
 loadAll();
