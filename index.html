@@ -197,6 +197,11 @@ footer a{color:var(--pr)}
 .mv{font-size:13px;margin:2px 0}.mv b{color:var(--pr)}
 .mvc{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--mu);margin:10px 2px 0}.mvc input{width:auto;margin:3px 0 0}
 .btn.pay{background:var(--pay);color:var(--payt)}
+.card.gone .img{filter:grayscale(.75);opacity:.85}.card.gone .pr{color:var(--mu)}
+.soldb{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-10deg);background:#c53030d9;color:#fff;font:800 24px Georgia,serif;letter-spacing:.18em;padding:6px 18px;border:3px solid #fff;border-radius:6px;white-space:nowrap}
+.pill.drop{background:#E3F4EA;color:#1B7F4F;margin-left:6px}
+.pht{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}.pht th{text-align:left;color:var(--mu);font-weight:500;font-size:12px;padding:4px}.pht td{padding:8px 4px;border-top:1px solid var(--br)}
+.dn{color:#1B7F4F;font-weight:700}.up{color:#c05621;font-weight:700}
 </style>
 </head>
 <body>
@@ -245,7 +250,7 @@ const CC={...NGS,...OTH};
 const stOpts=()=>'<optgroup label="Nigeria">'+Object.keys(NGS).map(c=>`<option>${c}</option>`).join('')+'</optgroup><optgroup label="Other countries">'+Object.keys(OTH).map(c=>`<option>${c}</option>`).join('')+'</optgroup>';
 const ROLE={buyer:'Buyer / Renter',agent:'Agent',landlord:'Landlord',inspector:'Inspector'};
 const MAPLIB=window.L;
-let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],RT={},isAdm=false,pmap=null,pmk=null,dmap=null,TH=[],MG=[],RD={},NM={},curTh=null,gch=null,toastT=null,mode='all',vo=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
+let me=null,prof=null,L=[],PM={},FV=new Set(),INS=[],RT={},isAdm=false,pmap=null,pmk=null,dmap=null,TH=[],MG=[],RD={},NM={},curTh=null,gch=null,toastT=null,mode='all',vo=false,av=false,sv=false,near=null,view='list',ch=null,map=null,layer=null,PG=null,SEEN=new Set();
 $('city').insertAdjacentHTML('beforeend',stOpts());
 
 const isSp=l=>PM[l.id]>Date.now();
@@ -282,17 +287,19 @@ async function loadAll(){
 /* ---------- list + map ---------- */
 function list(){
   const useTot=$('mvt')?.checked,c=$('city').value,t=$('type').value,mx=+$('max').value||1e15,qq=($('q').value||'').trim().toLowerCase();
-  let r=L.filter(l=>(mode=='all'||l.mode==mode)&&(!c||l.city==c)&&(!t||l.type==t)&&(!qq||[l.title,l.area,l.city,l.description,l.type].join(' ').toLowerCase().includes(qq))&&(useTot&&l.mode=='rent'?(mvCost(l).set&&mvCost(l).total<=mx):l.price<=mx)&&(!vo||l.profiles?.verified)&&(!sv||FV.has(l.id)));
+  let r=L.filter(l=>(mode=='all'||l.mode==mode)&&(!c||l.city==c)&&(!t||l.type==t)&&(!qq||[l.title,l.area,l.city,l.description,l.type].join(' ').toLowerCase().includes(qq))&&(useTot&&l.mode=='rent'?(mvCost(l).set&&mvCost(l).total<=mx):l.price<=mx)&&(!vo||l.profiles?.verified)&&(!av||!isGone(l))&&(!sv||FV.has(l.id)));
   r.forEach(l=>{l._d=near&&l.lat!=null?km(near,[l.lat,l.lng]):null});
   if(near)r.sort((a,b)=>(a._d??1e9)-(b._d??1e9));else r.sort((a,b)=>lvl(b.profiles)-lvl(a.profiles));
   const so=$('sort')?.value;
   if(so){const key=l=>so=='mv'&&l.mode=='rent'?mvCost(l).total:Number(l.price);if(so=='new')r.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));else r.sort((a,b)=>so=='phl'?key(b)-key(a):key(a)-key(b))}
-  const sp=r.filter(isSp).slice(0,3);
+  r=[...r.filter(l=>!isGone(l)),...r.filter(isGone)];
+  const sp=r.filter(l=>isSp(l)&&!isGone(l)).slice(0,3);
   return sp.concat(r.filter(l=>!sp.includes(l)));
 }
 const chip=(k,t,on)=>`<button class="tab${on?' on':''}" onclick="tg('${k}')">${t}</button>`;
 function tg(k){
   if(k=='vo')vo=!vo;
+  else if(k=='av')av=!av;
   else if(k=='sv'){if(!me)return authM();sv=!sv}
   else if(k=='nr'){
     if(near){near=null}else{navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{near=[p.coords.latitude,p.coords.longitude];render()},()=>alert('Allow location access to sort by distance.')):alert('Location not supported.');return}
@@ -301,7 +308,7 @@ function tg(k){
 }
 function render(){
   $('tabs').innerHTML=[['all','All'],['buy','Buy'],['rent','Rent'],['flip','Flip deals']].map(([k,v])=>`<button class="tab${mode==k?' on':''}" onclick="mode='${k}';render()">${v}</button>`).join('')
-    +chip('vo','✔ Verified',vo)+chip('sv','♥ Saved',sv)+chip('nr','📍 Near me',!!near)
+    +chip('vo','✔ Verified',vo)+chip('av','🟢 Available only',av)+chip('sv','♥ Saved',sv)+chip('nr','📍 Near me',!!near)
     +`<button class="tab${view=='map'?' on':''}" onclick="view=view=='map'?'list':'map';render()">🗺 Map</button><button class="tab" onclick="insM()">🔎 Inspectors</button>`;
   const r=list();
   $('rc').textContent=r.length+(r.length==1?' home':' homes');
@@ -311,7 +318,7 @@ function render(){
 function card(l){
   const m=(l.media||[]).find(x=>x.kind=='image'),sp=isSp(l),MD={buy:'For sale',rent:'For rent',flip:'Flip deal'};
   const specs=[l.beds?`🛏 ${l.beds} bd`:'',l.baths?`🛁 ${l.baths} ba`:'',l.size_sqm?`📐 ${Number(l.size_sqm).toLocaleString()} sqm`:''].filter(Boolean).join(' <i>|</i> ')||esc(l.type);
-  return `<div class="card${sp?' sp':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${vb(l)}${sp?'<span class="tag b">SPONSORED</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(l.price)}${l.mode=='rent'?'<small> /yr</small>':''}</div>${l.mode=='rent'?mvLine(l):''}<div class="ad">${esc(l.title)}</div><div class="mu">${l.area?esc(l.area)+', ':''}${esc(l.city)}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div><div class="spc">${specs}</div><span class="pill ${l.mode}">${MD[l.mode]}${l.mode=='flip'?' 🔥':''}</span></div>${cact(l)}</div>`;
+  return `<div class="card${sp?' sp':''}${isGone(l)?' gone':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${vb(l)}${sp?'<span class="tag b">SPONSORED</span>':''}${isGone(l)?`<span class="soldb">${ST_LBL(l)}</span>`:l.status=='under_offer'?'<span class="tag b">UNDER OFFER</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(isGone(l)&&l.sold_price?l.sold_price:l.price)}${l.mode=='rent'?'<small> /yr</small>':''}${isGone(l)?`<small> · ${l.status=='sold'?'sold':'rented'}</small>`:''}</div>${l.mode=='rent'?mvLine(l):''}<div class="ad">${esc(l.title)}</div><div class="mu">${l.area?esc(l.area)+', ':''}${esc(l.city)}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div><div class="spc">${specs}</div><span class="pill ${l.mode}">${MD[l.mode]}${l.mode=='flip'?' 🔥':''}</span>${isGone(l)?'':dropPill(l)}</div>${cact(l)}</div>`;
 }
 function drawMap(r){
   const el=$('map');
@@ -324,7 +331,7 @@ function drawMap(r){
   }
   layer.clearLayers();const pts=[];
   r.filter(l=>l.lat!=null).forEach(l=>{
-    MAPLIB.circleMarker([l.lat,l.lng],{radius:10,color:'#fff',weight:2,fillColor:isSp(l)?'#B3833B':'#2D6A4F',fillOpacity:1}).addTo(layer).bindTooltip(N(l.price)).on('click',()=>show(l.id));
+    MAPLIB.circleMarker([l.lat,l.lng],{radius:10,color:'#fff',weight:2,fillColor:isGone(l)?'#9AA39E':isSp(l)?'#B3833B':'#2D6A4F',fillOpacity:1}).addTo(layer).bindTooltip(N(l.price)).on('click',()=>show(l.id));
     pts.push([l.lat,l.lng]);
   });
   setTimeout(()=>{map.invalidateSize();if(near)pts.push(near);if(pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:14})},60);
@@ -386,9 +393,10 @@ function show(id){
   const badge=v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'<span class="mu">Unverified</span>';
   const pay=l.mode=='buy'?`<div class="sec"><h3>Estimated monthly payment</h3><div class="note" style="margin:0"><div class="row3"><div><span class="mu">Down payment %</span><input id="md" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Interest %</span><input id="mr" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Years</span><input id="my" type="number" value="15" oninput="calcPay(${l.price})"></div></div><div class="dp" id="mpay" style="font-size:26px"></div><span class="mu">Down payment <b id="mdp"></b> · Estimate only. Real rates depend on your bank or mortgage scheme.</span></div></div>`:l.mode=='rent'?`<div class="mu">≈ ${N(Math.round(l.price/12))} per month</div>${mvLine(l)}`:'';
   openD(`<div class="dbar"><button style="left:12px" onclick="closeM()">←</button><button style="right:112px" onclick="shareL(${l.id})">⤴</button><button style="right:62px" onclick="fav(${l.id});this.textContent=FV.has(${l.id})?'♥':'♡'">${FV.has(l.id)?'♥':'♡'}</button><button style="right:12px" onclick="closeM()">×</button></div>
-  <div class="gw"><div class="gl" onscroll="gc(this,${ms.length})">${slides}</div>${ms.length?`<span class="cnt" id="gcnt">1 / ${ms.length}</span>`:''}<div class="gb"><span>${MODE[l.mode]}</span>${isSp(l)?'<span>SPONSORED</span>':''}</div></div>
+  <div class="gw"><div class="gl" onscroll="gc(this,${ms.length})">${slides}</div>${ms.length?`<span class="cnt" id="gcnt">1 / ${ms.length}</span>`:''}<div class="gb"><span${isGone(l)?' style="background:#c53030"':''}>${isGone(l)?ST_LBL(l):MODE[l.mode]}</span>${l.status=='under_offer'?'<span style="background:#B3833B">UNDER OFFER</span>':''}${isSp(l)?'<span>SPONSORED</span>':''}</div></div>
   <div class="dsheet">
    <div class="dp">${N(l.price)}${l.mode=='rent'?'<span class="mu" style="font-size:16px"> / year</span>':''}</div>
+   ${isGone(l)?`<div class="note" style="background:#fdecec;color:#7a1f1f">🏷 <b>${l.status=='sold'?'Sold':'Rented'}</b> on ${dayY(l.status_at||l.created_at)}${l.sold_price?' for <b>'+N(l.sold_price)+'</b>':''}. This property is no longer available.</div>`:''}
    ${pay&&l.mode=='rent'?pay:''}
    <div class="stats">${stats||`<div><b>${esc(l.type)}</b><span>Type</span></div>`}</div>
    <div><b>${esc(l.title)}</b></div>
@@ -398,13 +406,14 @@ function show(id){
    <div class="sec"><h3>Facts &amp; features</h3><div class="facts">${fact('Type',l.type)}${fact('Bedrooms',l.beds)}${fact('Bathrooms',l.baths)}${fact('Size',l.size_sqm?l.size_sqm+' sqm':'')}${fact('Price per sqm',sqmP)}${fact('Title document',l.title_doc)}${fact('Listing',MODE[l.mode])}${fact('State',l.city)}</div>${(l.features||[]).length?`<div style="margin-top:12px">${l.features.map(f=>`<span class="chip">✓ ${esc(f)}</span>`).join('')}</div>`:''}</div>
    ${flip}
    ${pay&&l.mode=='buy'?pay:''}
+   <div class="sec"><h3>Price history</h3><div id="phist" class="mu">Loading…</div></div>
    <div class="sec"><h3>Location</h3><div id="dmap"></div><div class="mu" style="margin:6px 0">${exact?'Pin placed by the lister':'Approximate area (the lister did not drop a pin)'}</div><div class="row"><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}">Google Maps</a><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=${l.lat},${l.lng}">Apple Maps</a></div></div>
-   <div class="sec"><h3>Listed by</h3><div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
+   <div class="sec"><h3>Listed by</h3><div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button><button class="btn o" onclick="statusM(${l.id})">🏷 Mark sold / rented</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
    <div class="sec"><div class="note" style="margin:0"><b>🔎 Don't pay heavy inspection fees</b><br>Book a Nesta inspector for a flat fee and get photos, video and a report.<button class="btn w" onclick="bookM(${l.id})">Book an inspection</button></div></div>
    ${sim.length?`<div class="sec"><h3>Similar homes</h3><div class="sim">${sim.map(x=>{const m=(x.media||[]).find(q=>q.kind=='image');return `<div class="sc" onclick="show(${x.id})"><div class="im"${m?` style="background-image:url('${mu(m.path)}')"`:''}></div><div class="tx"><b>${N(x.price)}</b><br><span class="mu">${esc(x.title.slice(0,32))}<br>${esc(x.city)}</span></div></div>`}).join('')}</div></div>`:''}
    <div class="sec"><div class="safe"><b>Stay safe.</b> Never send money before you have inspected the property and checked the documents. Nesta never asks for payment in chat.</div><p class="c mu"><a style="cursor:pointer;text-decoration:underline" onclick="reportL(${l.id})">⚠ Report this listing</a></p></div>
-  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:dealOK(l)?`<div class="ctc"><button class="btn pay" onclick="dealM(${l.id},'${l.owner_id}','pay')">🔒 Pay Securely with Nesta Escrow<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><div class="row"><button class="btn o sm" onclick="bookM(${l.id})">🔎 Book Inspection</button><button class="btn o sm" onclick="chat(${l.id})">💬 Chat</button></div></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
-  setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price)},80);
+  </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:isGone(l)?`<div class="mu c" style="flex:1;padding:10px 0"><b>${l.status=='sold'?'Sold':'Rented'}</b> · no longer available</div><button class="btn" onclick="chat(${l.id})">💬 Message the lister</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:dealOK(l)?`<div class="ctc"><button class="btn pay" onclick="dealM(${l.id},'${l.owner_id}','pay')">🔒 Pay Securely with Nesta Escrow<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><div class="row"><button class="btn o sm" onclick="bookM(${l.id})">🔎 Book Inspection</button><button class="btn o sm" onclick="chat(${l.id})">💬 Chat</button></div></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
+  setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price);loadPH(l)},80);
 }
 async function del(id){
   if(!confirm('Delete this listing?'))return;
@@ -606,6 +615,7 @@ async function unsp(id){const {error}=await sb.from('promotions').delete().eq('l
 
 /* ---------- unread, alerts, card chat ---------- */
 function cact(l){
+  if(isGone(l))return '';
   if(me&&l.owner_id==me.id){const n=unrForListing(l.id);return `<div class="cact"><button class="btn o" onclick="event.stopPropagation();inbox(${l.id})">💬 Messages${n?` (${n} new)`:''}</button></div>`}
   return `<div class="cact"><button class="btn" onclick="event.stopPropagation();chat(${l.id})">💬 Chat</button><button class="btn o" onclick="event.stopPropagation();bookM(${l.id})">🔎 Inspect</button></div>`;
 }
@@ -981,8 +991,8 @@ async function profileM(uid){
   const html=`<div class="dbar"><button style="left:12px" onclick="closeM()">←</button><button style="right:62px" onclick="shareP('${uid}')">⤴</button><button style="right:12px" onclick="closeM()">×</button></div>
   <div class="pcv"><div class="pav${v>=2?' gold':''}">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><h2>${esc(p.name||'—')}</h2><div>${badge}</div><div class="pm">${esc(R)}${p.agency?' · '+esc(p.agency):''}</div></div>
   <div class="dsheet">
-   <div class="stats"><div><b>${lst.length}</b><span>Listings</span></div><div><b>${n?avg.toFixed(1):'–'}</b><span>Rating</span></div><div><b>${n}</b><span>Reviews</span></div><div><b>${new Date(p.created_at).toLocaleDateString('en-NG',{month:'short',year:'2-digit'})}</b><span>Joined</span></div></div>
-   <div class="sec"><h3>Trust &amp; verification</h3><div class="tl">${tl(v>=1,'Identity checked (government ID and selfie)')}${tl(v>=2,'Address and business details checked')}${tl(n>0,n?n+' review'+(n==1?'':'s')+' from real clients':'No client reviews yet')}</div></div>
+   <div class="stats"><div><b>${lst.filter(x=>!isGone(x)).length}</b><span>Active</span></div><div><b>${n?avg.toFixed(1):'–'}</b><span>Rating</span></div><div><b>${n}</b><span>Reviews</span></div><div><b>${new Date(p.created_at).toLocaleDateString('en-NG',{month:'short',year:'2-digit'})}</b><span>Joined</span></div></div>
+   <div class="sec"><h3>Trust &amp; verification</h3><div class="tl">${tl(v>=1,'Identity checked (government ID and selfie)')}${tl(v>=2,'Address and business details checked')}${tl(lst.some(isGone),lst.filter(isGone).length+' propert'+(lst.filter(isGone).length==1?'y':'ies')+' sold or rented through Nesta')}${tl(n>0,n?n+' review'+(n==1?'':'s')+' from real clients':'No client reviews yet')}</div></div>
    <div class="sec"><h3>About</h3><p style="white-space:pre-wrap;margin:0">${p.bio?esc(p.bio):'<span class="mu">This lister has not added a bio yet.</span>'}</p></div>
    <div class="sec"><h3>Ratings &amp; reviews</h3>${n?`<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div class="dp">${avg.toFixed(1)}</div><div><span style="color:var(--ac);font-size:20px">${stars(avg)}</span><br><span class="mu">${n} review${n==1?'':'s'}</span></div></div>${bars}`:''}${revs}</div>
    <div class="sec"><h3>${p.role=='inspector'?'Inspector':'Active listings'}${p.role!='inspector'?' ('+lst.length+')':''}</h3>${p.role=='inspector'?'<p class="mu" style="margin:0">Book this inspector from any listing page for a flat fee.</p>':lst.length?`<div class="grid" style="padding-bottom:0">${lst.map(card).join('')}</div>`:'<p class="mu">No active listings right now.</p>'}</div>
@@ -1008,8 +1018,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&me)refres
 const ESC_NAME='Nesta Escrow',ESC_DAYS=7;
 const EST={proposed:'📨 Awaiting acceptance',awaiting_payment:'⏳ Awaiting payment',held:'🔒 Funds held',released:'✔ Released',refunded:'↩ Refunded',disputed:'⚠ Disputed',declined:'✖ Declined',cancelled:'✖ Cancelled'};
 const feeItems=l=>[['Agency fee',l.agency_fee],['Agreement fee',l.agreement_fee],['Caution fee',l.caution_fee]].filter(x=>x[1]>0);
-const dealOK=l=>['agent','landlord'].includes(l.profiles?.role)&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
-const escOK=l=>l.mode=='rent'&&feeItems(l).length>0&&l.profiles?.role=='agent'&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
+const dealOK=l=>!isGone(l)&&['agent','landlord'].includes(l.profiles?.role)&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
+const escOK=l=>l.mode=='rent'&&!isGone(l)&&feeItems(l).length>0&&l.profiles?.role=='agent'&&lvl(l.profiles)>=2&&!(me&&l.owner_id==me.id);
 function feesBlk(l){
   if(l.mode!='rent')return '';
   const m=mvCost(l),row=(a,b,sub)=>`<div class="mvr"><span>${a}${sub?`<small>${sub}</small>`:''}</span><b>${b}</b></div>`;
@@ -1210,6 +1220,51 @@ async function escPayRun(id){
     escMsgFor(id,`🔒 I paid into ${ESC_NAME} (ref #${id}). Please go ahead with what we agreed.`);
     openM(`<h2>✅ Payment successful</h2><p>Your funds are now safely held in ${ESC_NAME}. We have notified the receiver.</p><p class="mu">Reference #${id}<br>🧪 Test mode: no real money moved.</p><button class="btn w" onclick="payM()">View my secure payments</button><button class="btn o w" onclick="closeM()">Done</button>`);
   }catch(e){err(e.message||String(e));b.disabled=false;b.textContent='Pay Securely'}
+}
+
+/* ---------- sold / rented marks + price history ---------- */
+const isGone=l=>l.status=='sold'||l.status=='rented';
+const ST_LBL=l=>l.status=='sold'?'SOLD':l.status=='rented'?'RENTED':l.status=='under_offer'?'UNDER OFFER':'';
+const dayY=d=>new Date(d).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'});
+function dropPill(l){
+  if(l.prev_price&&Number(l.price)<Number(l.prev_price)&&l.price_changed_at&&Date.now()-new Date(l.price_changed_at)<30*864e5)
+    return `<span class="pill drop">↓ Price reduced ${Math.round((1-l.price/l.prev_price)*100)}%</span>`;
+  return '';
+}
+function spark(H){
+  const P=H.filter(h=>['listed','price_change','sold','rented'].includes(h.event)).map(h=>Number(h.price));
+  if(P.length<2)return '';
+  const mn=Math.min(...P),mx=Math.max(...P),w=300,h=70,pad=8;
+  const x=i=>pad+i*(w-2*pad)/(P.length-1),y=v=>mx==mn?h/2:pad+(1-(v-mn)/(mx-mn))*(h-2*pad);
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:70px"><polyline points="${P.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ')}" fill="none" stroke="var(--pr)" stroke-width="2.5" stroke-linejoin="round"/>${P.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="var(--pr)"/>`).join('')}</svg>`;
+}
+async function loadPH(l){
+  const el=$('phist');if(!el)return;
+  const {data,error}=await sb.from('price_history').select('*').eq('listing_id',l.id).order('created_at');
+  if(!$('phist'))return;
+  if(error){el.textContent='Price history is not available yet.';return}
+  const H=data||[];
+  if(!H.length){el.textContent='No history recorded yet.';return}
+  const LB={listed:'Listed',price_change:'Price changed',under_offer:'Under offer',sold:'Sold',rented:'Rented',relisted:'Back on the market'};
+  let prev=null;
+  const rows=H.map(h=>{
+    const pr=Number(h.price);let ch='';
+    if(h.event=='price_change'&&prev!=null&&pr!==prev){const d=(pr-prev)/prev*100;ch=`<span class="${d<0?'dn':'up'}">${d<0?'↓':'↑'} ${Math.abs(d).toFixed(1)}%</span>`}
+    if(['listed','price_change'].includes(h.event))prev=pr;
+    return `<tr><td>${dayY(h.created_at)}</td><td>${LB[h.event]||esc(h.event)}</td><td><b>${N(pr)}</b></td><td>${ch}</td></tr>`;
+  }).reverse().join('');
+  el.innerHTML=spark(H)+`<table class="pht"><tr><th>Date</th><th>Event</th><th>Price</th><th></th></tr>${rows}</table><p class="mu" style="font-size:12px;margin:6px 0 0">Recorded automatically by Nesta. Listers cannot edit it.</p>`;
+}
+function statusM(id){
+  const l=L.find(x=>x.id==id);if(!l)return;
+  const done=l.mode=='rent'?'rented':'sold',dl=l.mode=='rent'?'Rented':'Sold';
+  openM(`<h2>🏷 Listing status</h2><p class="mu" style="margin-top:0">${esc(l.title)}</p><select id="stv"><option value="active"${l.status=='active'?' selected':''}>Available</option><option value="under_offer"${l.status=='under_offer'?' selected':''}>Under offer</option><option value="${done}"${l.status==done?' selected':''}>${dl}</option></select><input id="stp" type="number" placeholder="Final ${l.mode=='rent'?'rent':'sale price'} ₦ (optional, shown in the price history)" value="${l.sold_price||''}"><p class="mu" style="font-size:13px">A ${dl.toLowerCase()} property stays visible with a ${dl.toUpperCase()} mark. Clients can no longer pay or book it.</p><button class="btn w" onclick="statusSave(${l.id})">Save status</button><p id="er" class="er"></p>`);
+}
+async function statusSave(id){
+  const st=$('stv').value,sp=parseFloat($('stp').value)||null;
+  const {data,error}=await sb.from('listings').update({status:st,sold_price:['sold','rented'].includes(st)?sp:null}).eq('id',id).select('*,profiles!owner_id(name,verified,role,kyc_level)').single();
+  if(error)return err(error.message);
+  L=L.map(x=>x.id==id?data:x);closeM();render();show(id);
 }
 
 loadAll();
