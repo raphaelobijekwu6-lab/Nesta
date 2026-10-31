@@ -202,6 +202,14 @@ footer a{color:var(--pr)}
 .pill.drop{background:#E3F4EA;color:#1B7F4F;margin-left:6px}
 .pht{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}.pht th{text-align:left;color:var(--mu);font-weight:500;font-size:12px;padding:4px}.pht td{padding:8px 4px;border-top:1px solid var(--br)}
 .dn{color:#1B7F4F;font-weight:700}.up{color:#c05621;font-weight:700}
+.dates{display:flex;gap:8px;overflow-x:auto;padding:6px 0 8px}
+.dchip{flex:none;min-width:58px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 10px;border:1px solid var(--br);background:var(--card);border-radius:12px;color:var(--tx)}
+.dchip span{font-size:11px;opacity:.75}.dchip b{font-size:17px}
+.dchip.on{background:var(--pr);border-color:var(--pr);color:var(--on)}
+.tchip{min-width:auto;padding:10px 14px;font-size:14px;flex-direction:row}
+.trk{display:flex;gap:6px;margin:12px 0}.trk div{flex:1;text-align:center;font-size:12px;color:var(--mu)}
+.trk i{display:flex;margin:0 auto 4px;width:26px;height:26px;border-radius:50%;background:var(--br);color:var(--tx);align-items:center;justify-content:center;font-style:normal;font-weight:700}
+.trk .on{color:var(--tx);font-weight:600}.trk .on i{background:var(--pr);color:var(--on)}
 </style>
 </head>
 <body>
@@ -359,7 +367,7 @@ async function doAuth(up){
 }
 function accM(){
   const v=prof?.verified;
-  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button><button class="btn o w" onclick="payM()">💼 ${['agent','inspector'].includes(prof?.role)?'Escrow Payments':'Secure payments'}</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">My inspection requests</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button><button class="btn o w" onclick="payM()">💼 ${['agent','inspector'].includes(prof?.role)?'Escrow Payments':'Secure payments'}</button><button class="btn o w" onclick="inspM()">📅 My inspections</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">🛠 Inspection jobs</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
 }
 async function out(){await sb.auth.signOut();closeM()}
 function verM(){
@@ -409,7 +417,7 @@ function show(id){
    <div class="sec"><h3>Price history</h3><div id="phist" class="mu">Loading…</div></div>
    <div class="sec"><h3>Location</h3><div id="dmap"></div><div class="mu" style="margin:6px 0">${exact?'Pin placed by the lister':'Approximate area (the lister did not drop a pin)'}</div><div class="row"><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}">Google Maps</a><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=${l.lat},${l.lng}">Apple Maps</a></div></div>
    <div class="sec"><h3>Listed by</h3><div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button><button class="btn o" onclick="statusM(${l.id})">🏷 Mark sold / rented</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
-   <div class="sec"><div class="note" style="margin:0"><b>🔎 Don't pay heavy inspection fees</b><br>Book a Nesta inspector for a flat fee and get photos, video and a report.<button class="btn w" onclick="bookM(${l.id})">Book an inspection</button></div></div>
+   <div class="sec"><div class="note" style="margin:0"><b>🔎 Book an inspection · fixed fee ${N(inspFee(l))}</b><br>A local inspector visits and sends you photos, video and a report. <span class="chip">🔒 Protected by Nesta Escrow</span><br><span class="mu" style="font-size:13px">The inspector is only paid after you confirm.</span><button class="btn w" onclick="bookM(${l.id})">Book Inspection</button></div></div>
    ${sim.length?`<div class="sec"><h3>Similar homes</h3><div class="sim">${sim.map(x=>{const m=(x.media||[]).find(q=>q.kind=='image');return `<div class="sc" onclick="show(${x.id})"><div class="im"${m?` style="background-image:url('${mu(m.path)}')"`:''}></div><div class="tx"><b>${N(x.price)}</b><br><span class="mu">${esc(x.title.slice(0,32))}<br>${esc(x.city)}</span></div></div>`}).join('')}</div></div>`:''}
    <div class="sec"><div class="safe"><b>Stay safe.</b> Never send money before you have inspected the property and checked the documents. Nesta never asks for payment in chat.</div><p class="c mu"><a style="cursor:pointer;text-decoration:underline" onclick="reportL(${l.id})">⚠ Report this listing</a></p></div>
   </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:isGone(l)?`<div class="mu c" style="flex:1;padding:10px 0"><b>${l.status=='sold'?'Sold':'Rented'}</b> · no longer available</div><button class="btn" onclick="chat(${l.id})">💬 Message the lister</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:dealOK(l)?`<div class="ctc"><button class="btn pay" onclick="dealM(${l.id},'${l.owner_id}','pay')">🔒 Pay Securely with Nesta Escrow<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><div class="row"><button class="btn o sm" onclick="bookM(${l.id})">🔎 Book Inspection</button><button class="btn o sm" onclick="chat(${l.id})">💬 Chat</button></div></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
@@ -425,7 +433,7 @@ function postM(l){
   if(!['agent','landlord'].includes(prof?.role)){alert('Only agents and landlords can list properties. Create an account with that role.');return}
   if(!isAdm&&(prof.kyc_level||0)<1){refreshProf().then(()=>{if((prof.kyc_level||0)>=1)postM(l);else{alert('Complete Basic Verification to start listing (5–10 mins).');kycM()}});return}
   EDIT=l||null;EM=l?[...(l.media||[])]:[];PG=l&&exactLoc(l)?[l.lat,l.lng]:null;setTimeout(initPin,80);
-  openM(`<h2>${l?'Edit listing':'List a property'}</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm" onchange="rfToggle()"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦" oninput="mvPrev()"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pba" type="number" placeholder="Bathrooms"><input id="psq" type="number" placeholder="Size (sqm)"></div><select id="ptd"><option value="">Title document (if any)</option>${TDOCS.map(t=>`<option>${t}</option>`).join('')}</select><div id="rf" style="display:none"><label class="mu"><b>Move-in fees.</b> Tenants see the full total before they pay.</label><div class="row3"><input id="ffa" type="number" placeholder="Agency fee ₦" oninput="mvPrev()"><input id="ffg" type="number" placeholder="Agreement fee ₦" oninput="mvPrev()"><input id="ffc" type="number" placeholder="Caution fee ₦" oninput="mvPrev()"></div><button class="btn o w" type="button" onclick="suggestFees()">Use common fees (10% agency + 10% agreement)</button><div class="note" id="mvp"></div></div><label class="mu">Features</label><div class="chips">${FEATS.map(f=>`<label class="fc"><input type="checkbox" value="${f}"> ${f}</label>`).join('')}</div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><div id="em"></div><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">${l?'Save changes':'Publish'}</button><p id="er" class="er"></p>`);
+  openM(`<h2>${l?'Edit listing':'List a property'}</h2><input id="pt" placeholder="Title e.g. 3-bed flat, Lekki"><div class="row"><select id="pm" onchange="rfToggle()"><option value="buy">For sale</option><option value="rent">For rent (per year)</option><option value="flip">Flip deal</option></select><select id="py"><option>Flat</option><option>House</option><option>Duplex</option><option>Land</option></select></div><div class="row"><select id="pc" onchange="pcCity()">${stOpts()}</select><input id="pa" placeholder="Area / neighbourhood"></div><div class="row"><input id="pp" type="number" placeholder="Price ₦" oninput="mvPrev()"><input id="pb" type="number" placeholder="Bedrooms"></div><div class="row"><input id="pba" type="number" placeholder="Bathrooms"><input id="psq" type="number" placeholder="Size (sqm)"></div><input id="pif" type="number" placeholder="Inspection fee ₦ (optional, 1,000 to 50,000)"><select id="ptd"><option value="">Title document (if any)</option>${TDOCS.map(t=>`<option>${t}</option>`).join('')}</select><div id="rf" style="display:none"><label class="mu"><b>Move-in fees.</b> Tenants see the full total before they pay.</label><div class="row3"><input id="ffa" type="number" placeholder="Agency fee ₦" oninput="mvPrev()"><input id="ffg" type="number" placeholder="Agreement fee ₦" oninput="mvPrev()"><input id="ffc" type="number" placeholder="Caution fee ₦" oninput="mvPrev()"></div><button class="btn o w" type="button" onclick="suggestFees()">Use common fees (10% agency + 10% agreement)</button><div class="note" id="mvp"></div></div><label class="mu">Features</label><div class="chips">${FEATS.map(f=>`<label class="fc"><input type="checkbox" value="${f}"> ${f}</label>`).join('')}</div><div class="row"><input id="pv" type="number" placeholder="Resale value (flip)"><input id="pr" type="number" placeholder="Repair cost (flip)"></div><textarea id="pd" rows="3" placeholder="Describe the property"></textarea><label class="mu">Drag the pin to the exact spot (or tap the map)</label><div id="pmap"></div><button class="btn o w" onclick="geo()">📍 Use my current location</button><p id="pg" class="mu">If you skip this, the state capital is used.</p><label class="mu">Photos / video (up to 5)</label><div id="em"></div><input id="pf" type="file" accept="image/*,video/*" multiple><button class="btn w" id="ps" onclick="post()">${l?'Save changes':'Publish'}</button><p id="er" class="er"></p>`);
   if(l)fillForm(l);
   rfToggle();
 }
@@ -467,7 +475,7 @@ async function post(){
     }
     b.textContent='Saving…';
     const c=PG||((EDIT&&EDIT.city==city&&EDIT.lat!=null)?[EDIT.lat,EDIT.lng]:(CC[city]||CC.Lagos));
-    const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,baths:parseInt($('pba').value)||0,size_sqm:parseInt($('psq').value)||null,title_doc:$('ptd').value||null,agency_fee:fee('ffa'),agreement_fee:fee('ffg'),caution_fee:fee('ffc'),features:[...document.querySelectorAll('.fc input:checked')].map(i=>i.value),lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
+    const row={owner_id:me.id,title,description:$('pd').value.trim().slice(0,1000),city,area:$('pa').value.trim()||null,type:$('py').value,mode:$('pm').value,price,beds:parseInt($('pb').value)||0,baths:parseInt($('pba').value)||0,size_sqm:parseInt($('psq').value)||null,title_doc:$('ptd').value||null,inspection_fee:(()=>{const v=parseFloat($('pif').value)||null;if(v&&(v<1000||v>50000))throw new Error('Inspection fee must be between ₦1,000 and ₦50,000');return v})(),agency_fee:fee('ffa'),agreement_fee:fee('ffg'),caution_fee:fee('ffc'),features:[...document.querySelectorAll('.fc input:checked')].map(i=>i.value),lat:c[0],lng:c[1],arv:parseFloat($('pv').value)||null,repair:parseFloat($('pr').value)||null,media};
     let q;
     if(EDIT){delete row.owner_id;q=await sb.from('listings').update(row).eq('id',EDIT.id).select('*,profiles!owner_id(name,verified,role,kyc_level)').single()}
     else q=await sb.from('listings').insert(row).select('*,profiles!owner_id(name,verified,role,kyc_level)').single();
@@ -485,23 +493,38 @@ async function post(){
 }
 
 /* ---------- inspections + promotion ---------- */
+const SLOTS=['9:00 am','11:00 am','1:00 pm','3:00 pm','5:00 pm'];
+let BK={date:'',slot:''},INSF=5000;
+const inspFee=l=>Number(l.inspection_fee)||INSF;
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 async function bookM(id){
   if(!me)return authM();
-  const fr=await sb.from('app_settings').select('value').eq('key','inspection_fee').maybeSingle(),fee=Number(fr.data?.value)||5000,mode=await escMode();
-  openM(`<h2>Book Inspection</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged.</div>':''}<p class="mu" style="margin-top:0">A local inspector visits and sends you photos, video and a report. The flat fee of <b>${N(fee)}</b> is held in ${ESC_NAME} and only released to the inspector after you confirm. You can raise a dispute anytime before the funds are released.</p><input id="bn" placeholder="Your name" value="${esc(prof?.name||'')}"><input id="bp" type="tel" placeholder="Phone / WhatsApp"><input id="bd" type="date"><select id="bi"><option value="">Any available inspector</option>${INS.map(i=>`<option value="${i.id}">${esc(i.name)}${i.verified?' ✔':''}</option>`).join('')}</select><button class="btn w" id="bkb" data-l="Pay ${N(fee)} Securely" onclick="book(${id})">Pay ${N(fee)} Securely</button><p id="er" class="er"></p>`);
+  const l=L.find(x=>x.id==id);if(!l)return;
+  if(isGone(l))return alert('This property is no longer available.');
+  const fee=inspFee(l),mode=await escMode();BK={date:'',slot:''};
+  const days=[...Array(14)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);return d});
+  openM(`<h2>Book Inspection</h2><span class="chip">🔒 Protected by Nesta Escrow</span>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged.</div>':''}<p class="mu" style="margin:8px 0 0">${esc(l.title)}</p><div class="note"><b>Fixed inspection fee: ${N(fee)}</b><br>No surprises. A local inspector visits and sends you photos, video and a report.</div><label class="mu">Choose a date</label><div class="dates">${days.map(d=>`<button class="dchip" data-d="${ymd(d)}" onclick="bkDate(this)"><span>${d.toLocaleDateString('en-NG',{weekday:'short'})}</span><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-NG',{month:'short'})}</span></button>`).join('')}</div><label class="mu">Choose a time</label><div class="dates">${SLOTS.map(t=>`<button class="dchip tchip" data-t="${t}" onclick="bkSlot(this)">${t}</button>`).join('')}</div><input id="bn" placeholder="Your name" value="${esc(prof?.name||'')}"><input id="bp" type="tel" placeholder="Phone / WhatsApp"><select id="bi"><option value="">Any available inspector (recommended)</option>${INS.map(i=>`<option value="${i.id}">${esc(i.name)}${i.verified?' ✔':''}</option>`).join('')}</select><p class="mu" style="font-size:13px">Payment is held in Nesta Escrow. The inspector only gets paid after you confirm the inspection happened. You can raise a dispute anytime before the funds are released.</p><button class="btn w" id="bkb" data-l="Pay ${N(fee)} Securely" onclick="book(${id})">Pay ${N(fee)} Securely</button><p id="er" class="er"></p>`);
 }
+function bkDate(el){document.querySelectorAll('.dchip[data-d]').forEach(x=>x.classList.remove('on'));el.classList.add('on');BK.date=el.dataset.d}
+function bkSlot(el){document.querySelectorAll('.tchip').forEach(x=>x.classList.remove('on'));el.classList.add('on');BK.slot=el.dataset.t}
+const TRK=[['booked','Inspection Booked'],['completed','Completed'],['confirmed','Confirmed']];
+function trk(st){const ix={booked:0,completed:1,confirmed:2,disputed:1,refunded:2}[st]??0;return `<div class="trk">${TRK.map((t,i)=>`<div class="${i<=ix?'on':''}"><i>${i<ix||(i==ix&&st=='confirmed')?'✓':i+1}</i><span>${t[1]}</span></div>`).join('')}</div>`}
 async function book(id){
   const name=$('bn').value.trim(),phone=$('bp').value.trim();
+  if(!BK.date||!BK.slot)return err('Pick a date and a time');
   if(!name||!phone)return err('Add your name and phone');
   const b=$('bkb');b.disabled=true;b.textContent='Processing…';
   try{
     if(await escMode()!='test')throw new Error('Online payment is not switched on yet.');
-    const insp=$('bi').value||null,dt=$('bd').value||null;
+    const l=L.find(x=>x.id==id),insp=$('bi').value||null;
     let r=await sb.rpc('escrow_start_inspection',{lid:id,inspector:insp});if(r.error)throw r.error;
     const eid=r.data;
     r=await sb.rpc('escrow_test_pay',{eid});if(r.error)throw r.error;
-    const q=await sb.from('inspection_requests').insert({listing_id:id,inspector_id:insp,name,phone,preferred_date:dt,escrow_id:eid});if(q.error)throw q.error;
-    openM(`<h2>✅ Inspection booked</h2><p>Your inspection fee is safely held in ${ESC_NAME}. An inspector will contact you on ${esc(phone)}.</p><p class="mu">After the inspection, confirm it under Secure payments to release the fee. Reference #${eid} · 🧪 Test mode.</p><button class="btn w" onclick="payM()">View Transaction</button><button class="btn o w" onclick="closeM()">Done</button>`);
+    const q=await sb.from('inspection_requests').insert({listing_id:id,inspector_id:insp,name,phone,preferred_date:BK.date,slot:BK.slot,escrow_id:eid});if(q.error)throw q.error;
+    const when=new Date(BK.date+'T12:00').toLocaleDateString('en-NG',{weekday:'long',day:'numeric',month:'long'})+' at '+BK.slot;
+    escMsgTo(l.owner_id,id,`📅 I booked an inspection for ${when}. The ${N(inspFee(l))} fee is held in Nesta Escrow (ref #${eid}).`);
+    if(insp)escMsgTo(insp,null,`📅 New inspection job: "${l.title}" on ${when}. The ${N(inspFee(l))} fee is held in Nesta Escrow (ref #${eid}).`);
+    openM(`<h2>✅ Inspection booked</h2>${trk('booked')}<p><b>${esc(when)}</b></p><p>Your ${N(inspFee(l))} fee is safely held in ${ESC_NAME}. We have notified the agent${insp?' and your inspector':''}. ${insp?'The inspector':'An inspector'} will contact you on ${esc(phone)}.</p><p class="mu">After the inspection, confirm it to release the fee. You can raise a dispute anytime before then. Reference #${eid} · 🧪 Test mode.</p><button class="btn w" onclick="inspM()">Track my inspection</button><button class="btn o w" onclick="closeM()">Done</button>`);
   }catch(e){err(e.message||String(e));b.disabled=false;b.textContent=b.dataset.l}
 }
 function promoM(id){
@@ -578,9 +601,42 @@ async function chatIns(id){
   if(!t){const r=await sb.from('threads').insert({owner_id:id}).select('id').single();if(r.error)return alert(r.error.message);t=r.data}
   thread(t.id);
 }
+const inspStage=r=>{const es=r.escrows?.status;if(es=='refunded')return 'refunded';if(es=='released')return 'confirmed';if(es=='disputed'||r.status=='disputed')return 'disputed';return r.status};
+const whenTxt=r=>(r.preferred_date?new Date(r.preferred_date+'T12:00').toLocaleDateString('en-NG',{weekday:'short',day:'numeric',month:'short'}):'No date')+(r.slot?' · '+r.slot:'');
+async function inspM(){
+  if(!me)return authM();
+  await sb.rpc('escrow_sweep');
+  const {data,error}=await sb.from('inspection_requests').select('*,listings!listing_id(title),insp:profiles!inspector_id(name),escrows!escrow_id(status,total)').eq('user_id',me.id).order('created_at',{ascending:false}).limit(30);
+  const today=ymd(new Date());
+  const card=r=>{
+    const st=inspStage(r),can=st=='completed'||(st=='booked'&&r.preferred_date&&r.preferred_date<=today);
+    const msg={booked:'Waiting for the inspection. The fee stays in escrow until you confirm.',completed:'The inspector marked this inspection as completed. Are you satisfied? Releasing the funds means the inspector gets paid.',confirmed:'Confirmed ✔ The fee has been released to the inspector.',disputed:'⚠ Disputed. Nesta will review and contact you.',refunded:'↩ The fee was refunded to you.'}[st]||'';
+    return `<div class="note"><b>${esc(r.listings?.title||'Listing')}</b> <span class="chip">🔒 Protected by Nesta Escrow</span><br>📅 ${whenTxt(r)}<br>Inspector: ${r.insp?.name?esc(r.insp.name):'<span class="mu">waiting for an inspector to accept</span>'} · Fee ${N(r.escrows?.total||0)}${trk(st)}<p style="margin:0">${msg}</p>${r.report_note?`<p class="mu"><b>Inspector's note:</b> ${esc(r.report_note)}</p>`:''}${can?`<div class="row" style="margin-top:10px"><button class="btn" onclick="inspConfirm(${r.id})">✔ Yes, release funds</button><button class="btn o" onclick="inspProblem(${r.id})">Report a Problem</button></div>`:''}</div>`;
+  };
+  openF('📅 My inspections',error?`<p class="er">${esc(error.message)}</p>`:(data||[]).length?data.map(card).join(''):'<p class="mu">No inspections yet. Tap <b>Book Inspection</b> on any listing.</p>',accM);
+}
+async function inspConfirm(id){
+  if(!confirm('Confirm the inspection happened and release the fee to the inspector? You cannot undo this.'))return;
+  const {error}=await sb.rpc('inspection_confirm',{rid:id});if(error)return alert(error.message);inspM();
+}
+async function inspProblem(id){
+  const reason=prompt('What went wrong? Nesta will review and contact you.');if(!reason)return;
+  const {error}=await sb.rpc('inspection_dispute',{rid:id,reason});if(error)return alert(error.message);inspM();
+}
 async function myReqs(){
-  const {data,error}=await sb.from('inspection_requests').select('*,listings!listing_id(title)').eq('inspector_id',me.id).order('created_at',{ascending:false}).limit(50);
-  openM('<h2>My inspection requests</h2>'+(error?`<p class="er">${esc(error.message)}</p>`:(data||[]).length?data.map(r=>`<div class="note"><b>${esc(r.listings?.title||'Listing')}</b><br>${esc(r.name)} · ${esc(r.phone)}<br>${r.preferred_date?esc(r.preferred_date):'No date set'}</div>`).join(''):'<p class="mu">No requests assigned to you yet.</p>'));
+  const [o,m]=await Promise.all([sb.rpc('inspection_open'),sb.from('inspection_requests').select('*,listings!listing_id(title,city,area),escrows!escrow_id(status,total)').eq('inspector_id',me.id).order('created_at',{ascending:false}).limit(50)]);
+  const open=(o.data||[]).map(r=>`<div class="note"><b>${esc(r.title)}</b><br>${esc(r.area?r.area+', ':'')}${esc(r.city)}<br>📅 ${whenTxt(r)} · Fee <b>${N(r.fee)}</b> held in escrow<button class="btn w" onclick="inspClaim(${r.id})">Take this job</button></div>`).join('');
+  const mine=(m.data||[]).map(r=>{
+    const st=inspStage(r),digits=String(r.phone||'').replace(/\D/g,'');
+    const act=st=='booked'?`<button class="btn w" onclick="inspDone(${r.id})">✔ Mark inspection completed</button>`:st=='completed'?'<p class="mu">Waiting for the client to confirm. You are paid after they confirm.</p>':st=='confirmed'?'<p class="mu">✔ Confirmed. Fee released to you.</p>':st=='disputed'?'<p class="er">⚠ Disputed. Nesta will review.</p>':'';
+    return `<div class="note"><b>${esc(r.listings?.title||'Listing')}</b><br>${esc(r.listings?.area?r.listings.area+', ':'')}${esc(r.listings?.city||'')}<br>📅 ${whenTxt(r)} · Fee ${N(r.escrows?.total||0)}<br>Client: ${esc(r.name)} · <a href="https://wa.me/${digits}" target="_blank" rel="noopener">WhatsApp</a> · <a href="tel:${esc(r.phone)}">Call</a>${trk(st)}${act}</div>`;
+  }).join('');
+  openF('📅 Inspection jobs',`<h3 style="margin-top:0">Open jobs</h3>${o.error?`<p class="er">${esc(o.error.message)}</p>`:open||'<p class="mu">No open jobs right now.</p>'}<h3>My jobs</h3>${m.error?`<p class="er">${esc(m.error.message)}</p>`:mine||'<p class="mu">No jobs yet.</p>'}`,accM);
+}
+async function inspClaim(id){const {error}=await sb.rpc('inspection_claim',{rid:id});if(error)return alert(error.message);myReqs()}
+async function inspDone(id){
+  const note=prompt('Short note for the client (optional): what you found, photos sent, etc.');if(note===null)return;
+  const {error}=await sb.rpc('inspection_complete',{rid:id,note:note.trim()||null});if(error)return alert(error.message);myReqs();
 }
 
 /* ---------- admin ---------- */
@@ -605,7 +661,7 @@ async function adminM(t='v'){
     h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(c=>`<div class="note"><b>#${c.id} · ${esc(c.subject)}</b> · ${esc(KINDS[c.kind]||c.kind)} · ${esc(c.status)}<br>From: ${esc(c.reporter?.name)} (${esc(c.reporter?.role)})${c.about?`<br>About: ${esc(c.about.name)} (${esc(c.about.role)})`:''}${c.listings?`<br>Listing: ${esc(c.listings.title)}`:''}<br>${esc(c.message)}${c.admin_note?`<br><b>Note:</b> ${esc(c.admin_note)}`:''}<div class="row" style="margin-top:8px"><button class="btn o" onclick="cm(${c.id},'in_review')">In review</button><button class="btn" onclick="cm(${c.id},'resolved')">Resolve</button></div></div>`).join('')||'<p class="mu">No open complaints 🎉</p>';
   }else{
     const {data,error}=await sb.from('inspection_requests').select('*,listings!listing_id(title),profiles!inspector_id(name)').order('created_at',{ascending:false}).limit(30);
-    h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(r=>`<div class="note"><b>${esc(r.listings?.title||'Listing')}</b><br>${esc(r.name)} · ${esc(r.phone)}<br>${r.preferred_date?esc(r.preferred_date):'No date'} · Inspector: ${esc(r.profiles?.name||'any')}</div>`).join('')||'<p class="mu">No inspection requests yet.</p>';
+    h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(r=>`<div class="note"><b>${esc(r.listings?.title||'Listing')}</b><br>${esc(r.name)} · ${esc(r.phone)}<br>${r.preferred_date?esc(r.preferred_date):'No date'}${r.slot?' · '+esc(r.slot):''} · ${esc(r.status||'')} · Inspector: ${esc(r.profiles?.name||'any')}</div>`).join('')||'<p class="mu">No inspection requests yet.</p>';
   }
   openF('🛠 Admin',tabs+h,()=>accM());
 }
@@ -963,7 +1019,7 @@ function editL(id){const l=L.find(x=>x.id==id);if(l)postM(l)}
 function fillForm(l){
   if($('pc').value!=l.city){$('pc').insertAdjacentHTML('afterbegin',`<option>${esc(l.city)}</option>`);$('pc').value=l.city}
   $('pt').value=l.title;$('pm').value=l.mode;$('py').value=l.type;$('pa').value=l.area||'';$('pp').value=l.price;
-  $('pb').value=l.beds||'';$('pba').value=l.baths||'';$('psq').value=l.size_sqm||'';$('ptd').value=l.title_doc||'';$('ffa').value=l.agency_fee||'';$('ffg').value=l.agreement_fee||'';$('ffc').value=l.caution_fee||'';
+  $('pb').value=l.beds||'';$('pba').value=l.baths||'';$('psq').value=l.size_sqm||'';$('ptd').value=l.title_doc||'';$('pif').value=l.inspection_fee||'';$('ffa').value=l.agency_fee||'';$('ffg').value=l.agreement_fee||'';$('ffc').value=l.caution_fee||'';
   $('pv').value=l.arv||'';$('pr').value=l.repair||'';$('pd').value=l.description||'';
   document.querySelectorAll('.fc input').forEach(i=>i.checked=(l.features||[]).includes(i.value));
   renderEM();rfToggle();
@@ -1267,6 +1323,7 @@ async function statusSave(id){
   L=L.map(x=>x.id==id?data:x);closeM();render();show(id);
 }
 
+sb.from('app_settings').select('value').eq('key','inspection_fee').maybeSingle().then(r=>{if(r.data)INSF=Number(r.data.value)||5000});
 loadAll();
 </script>
 </body>
