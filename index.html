@@ -214,6 +214,8 @@ footer a{color:var(--pr)}
 .btn.own{border-color:#0E7490;color:#0E7490}
 .tag.v.own{background:#0E7490;color:#fff}
 .ownck{display:flex;gap:8px;align-items:center;background:#D8F0F4;color:#0E5566;border-radius:10px;padding:10px 12px;margin:6px 0;font-size:14px}.ownck input{width:auto;margin:0}
+.tag.v.own2{background:#0B5563;color:#fff;border:1.5px solid #E3C16F}
+.chip.hot{background:#FDE7DC;color:#B54708}.chip.warm{background:#FEF3D7;color:#8A5A00}.chip.cool{background:#E8F1EC;color:#2D6A4F}
 </style>
 </head>
 <body>
@@ -281,7 +283,7 @@ async function setUser(u){
   }
   $('acb').textContent=prof?'👤 '+prof.name.split(' ')[0]:'Sign in';
   $('msgb').style.display=me?'inline-block':'none';
-  if(me){await loadChat();startRT();escCheck()}else{stopRT();TH=[];MG=[];RD={};updBadge()}
+  if(me){await loadChat();startRT();escCheck();leadPing()}else{stopRT();TH=[];MG=[];RD={};updBadge()}
   render();
 }
 async function loadAll(){
@@ -301,7 +303,7 @@ function list(){
   const useTot=$('mvt')?.checked,c=$('city').value,t=$('type').value,mx=+$('max').value||1e15,qq=($('q').value||'').trim().toLowerCase();
   let r=L.filter(l=>(mode=='all'||l.mode==mode)&&(!c||l.city==c)&&(!t||l.type==t)&&(!qq||[l.title,l.area,l.city,l.description,l.type].join(' ').toLowerCase().includes(qq))&&(useTot&&l.mode=='rent'?(mvCost(l).set&&mvCost(l).total<=mx):l.price<=mx)&&(!vo||l.profiles?.verified)&&(!av||!isGone(l))&&(!dof||l.direct_owner)&&(!sv||FV.has(l.id)));
   r.forEach(l=>{l._d=near&&l.lat!=null?km(near,[l.lat,l.lng]):null});
-  if(near)r.sort((a,b)=>(a._d??1e9)-(b._d??1e9));else r.sort((a,b)=>lvl(b.profiles)-lvl(a.profiles));
+  if(near)r.sort((a,b)=>(a._d??1e9)-(b._d??1e9));else r.sort((a,b)=>(lvl(b.profiles)+(b.ownership_verified?1:0))-(lvl(a.profiles)+(a.ownership_verified?1:0)));
   const so=$('sort')?.value;
   if(so){const key=l=>so=='mv'&&l.mode=='rent'?mvCost(l).total:Number(l.price);if(so=='new')r.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));else r.sort((a,b)=>so=='phl'?key(b)-key(a):key(a)-key(b))}
   r=[...r.filter(l=>!isGone(l)),...r.filter(isGone)];
@@ -372,7 +374,7 @@ async function doAuth(up){
 }
 function accM(){
   const v=prof?.verified;
-  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button><button class="btn o w" onclick="payM()">💼 ${['agent','inspector'].includes(prof?.role)?'Escrow Payments':'Secure payments'}</button><button class="btn o w" onclick="inspM()">📅 My inspections</button>${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">🛠 Inspection jobs</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+  openM(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button><button class="btn o w" onclick="payM()">💼 ${['agent','inspector'].includes(prof?.role)?'Escrow Payments':'Secure payments'}</button><button class="btn o w" onclick="inspM()">📅 My inspections</button><button class="btn o w" onclick="roomsM()">🤝 Deal rooms</button>${prof?.role!='buyer'?`<button class="btn o w" onclick="leadsM()">📈 Client activity${LEADN?` (${LEADN} hot)`:''}</button>`:''}${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">🛠 Inspection jobs</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
 }
 async function out(){await sb.auth.signOut();closeM()}
 function verM(){
@@ -403,10 +405,10 @@ function show(id){
   const sqmP=l.mode!='rent'&&l.size_sqm?N(Math.round(l.price/l.size_sqm))+' / sqm':'';
   const flip=l.mode=='flip'&&l.arv?`<div class="sec"><h3>Flip economics</h3><div class="note" style="margin:0">Buy ${N(l.price)} + repairs ${N(l.repair||0)} → resell ${N(l.arv)}<br><b style="font-size:18px">Potential profit: ${N(l.arv-l.price-(l.repair||0))}</b><br><span class="mu">Estimate only. Do your own checks.</span></div></div>`:'';
   const exact=exactLoc(l),sim=L.filter(x=>x.id!=l.id&&(x.city==l.city||x.type==l.type)).sort((a,b)=>Math.abs(a.price-l.price)-Math.abs(b.price-l.price)).slice(0,6);
-  const badge=l.direct_owner?'<b style="color:#0E7490">🏠 Direct Owner · ID verified</b>':v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'<span class="mu">Unverified</span>';
+  const badge=l.direct_owner?ownTxt(l):v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'<span class="mu">Unverified</span>';
   const pay=l.mode=='buy'?`<div class="sec"><h3>Estimated monthly payment</h3><div class="note" style="margin:0"><div class="row3"><div><span class="mu">Down payment %</span><input id="md" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Interest %</span><input id="mr" type="number" value="20" oninput="calcPay(${l.price})"></div><div><span class="mu">Years</span><input id="my" type="number" value="15" oninput="calcPay(${l.price})"></div></div><div class="dp" id="mpay" style="font-size:26px"></div><span class="mu">Down payment <b id="mdp"></b> · Estimate only. Real rates depend on your bank or mortgage scheme.</span></div></div>`:l.mode=='rent'?`<div class="mu">≈ ${N(Math.round(l.price/12))} per month</div>${mvLine(l)}`:'';
   openD(`<div class="dbar"><button style="left:12px" onclick="closeM()">←</button><button style="right:112px" onclick="shareL(${l.id})">⤴</button><button style="right:62px" onclick="fav(${l.id});this.textContent=FV.has(${l.id})?'♥':'♡'">${FV.has(l.id)?'♥':'♡'}</button><button style="right:12px" onclick="closeM()">×</button></div>
-  <div class="gw"><div class="gl" onscroll="gc(this,${ms.length})">${slides}</div>${ms.length?`<span class="cnt" id="gcnt">1 / ${ms.length}</span>`:''}<div class="gb"><span${isGone(l)?' style="background:#c53030"':''}>${isGone(l)?ST_LBL(l):MODE[l.mode]}</span>${l.status=='under_offer'?'<span style="background:#B3833B">UNDER OFFER</span>':''}${l.direct_owner?'<span style="background:#0E7490">🏠 DIRECT OWNER</span>':''}${isSp(l)?'<span>SPONSORED</span>':''}</div></div>
+  <div class="gw"><div class="gl" onscroll="gc(this,${ms.length})">${slides}</div>${ms.length?`<span class="cnt" id="gcnt">1 / ${ms.length}</span>`:''}<div class="gb"><span${isGone(l)?' style="background:#c53030"':''}>${isGone(l)?ST_LBL(l):MODE[l.mode]}</span>${l.status=='under_offer'?'<span style="background:#B3833B">UNDER OFFER</span>':''}${l.direct_owner?(l.ownership_verified?'<span style="background:#0B5563;border:1px solid #E3C16F">🛡 VERIFIED OWNER</span>':'<span style="background:#0E7490">🏠 DIRECT OWNER</span>'):''}${isSp(l)?'<span>SPONSORED</span>':''}</div></div>
   <div class="dsheet">
    <div class="dp">${N(l.price)}${l.mode=='rent'?'<span class="mu" style="font-size:16px"> / year</span>':''}</div>
    ${isGone(l)?`<div class="note" style="background:#fdecec;color:#7a1f1f">🏷 <b>${l.status=='sold'?'Sold':'Rented'}</b> on ${dayY(l.status_at||l.created_at)}${l.sold_price?' for <b>'+N(l.sold_price)+'</b>':''}. This property is no longer available.</div>`:''}
@@ -421,12 +423,13 @@ function show(id){
    ${pay&&l.mode=='buy'?pay:''}
    <div class="sec"><h3>Price history</h3><div id="phist" class="mu">Loading…</div></div>
    <div class="sec"><h3>Location</h3><div id="dmap"></div><div class="mu" style="margin:6px 0">${exact?'Pin placed by the lister':'Approximate area (the lister did not drop a pin)'}</div><div class="row"><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}">Google Maps</a><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=${l.lat},${l.lng}">Apple Maps</a></div></div>
-   <div class="sec"><h3>${l.direct_owner?'Listed directly by the owner':'Listed by'}</h3>${l.direct_owner?'<p class="mu" style="margin-top:0;font-size:13px">No agent involved. Nesta checked the owner’s ID and selfie, but not the property title. Always ask to see the documents.</p>':''}<div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button><button class="btn o" onclick="statusM(${l.id})">🏷 Mark sold / rented</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
+   ${own&&l.direct_owner?'<div class="sec" id="ownbox"></div>':''}<div class="sec"><h3>${l.direct_owner?'Listed directly by the owner':'Listed by'}</h3>${l.direct_owner?'<p class="mu" style="margin-top:0;font-size:13px">'+(l.ownership_verified?'No agent involved. Nesta checked the owner’s ID and reviewed their '+esc(l.ownership_doc||'ownership document')+'. This is a document check, not a legal title search. Still inspect the property and use a lawyer before paying.':'No agent involved. Nesta checked the owner’s ID and selfie, but not the property title. Always ask to see the documents.')+'</p>':''}<div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button><button class="btn o" onclick="statusM(${l.id})">🏷 Mark sold / rented</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
    <div class="sec"><div class="note" style="margin:0"><b>🔎 Book an inspection · fixed fee ${N(inspFee(l))}</b><br>A local inspector visits and sends you photos, video and a report. <span class="chip">🔒 Protected by Nesta Escrow</span><br><span class="mu" style="font-size:13px">The inspector is only paid after you confirm.</span><button class="btn w" onclick="bookM(${l.id})">Book Inspection</button></div></div>
    ${sim.length?`<div class="sec"><h3>Similar homes</h3><div class="sim">${sim.map(x=>{const m=(x.media||[]).find(q=>q.kind=='image');return `<div class="sc" onclick="show(${x.id})"><div class="im"${m?` style="background-image:url('${mu(m.path)}')"`:''}></div><div class="tx"><b>${N(x.price)}</b><br><span class="mu">${esc(x.title.slice(0,32))}<br>${esc(x.city)}</span></div></div>`}).join('')}</div></div>`:''}
    <div class="sec"><div class="safe"><b>Stay safe.</b> Never send money before you have inspected the property and checked the documents. Nesta never asks for payment in chat.</div><p class="c mu"><a style="cursor:pointer;text-decoration:underline" onclick="reportL(${l.id})">⚠ Report this listing</a></p></div>
   </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:isGone(l)?`<div class="mu c" style="flex:1;padding:10px 0"><b>${l.status=='sold'?'Sold':'Rented'}</b> · no longer available</div><button class="btn" onclick="chat(${l.id})">💬 Message the lister</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:dealOK(l)?`<div class="ctc"><button class="btn pay" onclick="dealM(${l.id},'${l.owner_id}','pay')">🔒 Pay Securely with Nesta Escrow<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><div class="row"><button class="btn o sm" onclick="bookM(${l.id})">🔎 Book Inspection</button><button class="btn o sm" onclick="chat(${l.id})">💬 Chat</button></div></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
-  setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price);loadPH(l)},80);
+  if(me&&!own&&!VL[l.id]){VL[l.id]=1;sb.rpc('view_log',{lid:l.id}).then(()=>{},()=>{})}
+  setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price);loadPH(l);if($('ownbox'))loadOwnProof(l)},80);
 }
 async function del(id){
   if(!confirm('Delete this listing?'))return;
@@ -490,7 +493,7 @@ async function post(){
       const gone=(EDIT.media||[]).filter(m=>!media.some(x=>x.path==m.path)).map(m=>m.path);
       if(gone.length)sb.storage.from('listing-media').remove(gone);
       L=L.map(x=>x.id==EDIT.id?data:x);EDIT=null;closeM();render();show(data.id);
-    }else{L.unshift(data);closeM();render()}
+    }else{L.unshift(data);closeM();render();if(data.direct_owner)show(data.id)}
   }catch(e){
     err(String(e&&e.message||e));
     b.disabled=false;b.textContent=EDIT?'Save changes':'Publish';
@@ -562,7 +565,7 @@ async function thread(id,fromInbox){
   if(!TH.find(x=>x.id==id))await loadChat();
   if(ch){sb.removeChannel(ch);ch=null}
   SEEN=new Set();
-  openF(chatTitle(id),`<div id="ms" class="ms"></div><div class="fin"><input id="mi" placeholder="Type a message" onkeydown="if(event.key=='Enter')send(${id})"><button class="btn" style="flex:0 0 auto" onclick="send(${id})">Send</button></div>`,fromInbox?()=>inbox(INBL):null,true,`<button class="fx" style="font-size:16px" title="Escrow payment" onclick="dealFromThread(${id})">🔒</button><button class="fx" style="font-size:16px" title="Report" onclick="reportT(${id})">⚠</button>`);
+  openF(chatTitle(id),`${chatNote(id)}<div id="ms" class="ms"></div><div class="fin"><input id="mi" placeholder="Type a message" onkeydown="if(event.key=='Enter')send(${id})"><button class="btn" style="flex:0 0 auto" onclick="send(${id})">Send</button></div>`,fromInbox?()=>inbox(INBL):null,true,`<button class="fx" style="font-size:16px" title="Deal room" onclick="roomOpen(${id})">🤝</button><button class="fx" style="font-size:16px" title="Escrow payment" onclick="dealFromThread(${id})">🔒</button><button class="fx" style="font-size:16px" title="Report" onclick="reportT(${id})">⚠</button>`);
   const {data}=await sb.from('messages').select('*').eq('thread_id',id).order('created_at');
   curTh=id;(data||[]).forEach(addMsg);markRead(id);
   ch=sb.channel('t'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'thread_id=eq.'+id},p=>addMsg(p.new)).subscribe();
@@ -647,10 +650,22 @@ async function inspDone(id){
 /* ---------- admin ---------- */
 async function adminM(t='v'){
   if(!isAdm)return;
-  const tabs=`<div class="tabs">${[['v','KYC'],['p','Sponsored'],['e','Escrow'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
+  const tabs=`<div class="tabs">${[['v','KYC'],['o','Ownership'],['p','Sponsored'],['e','Escrow'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
   let h='';
   if(t=='v'){
     h=await kycQueue();
+  }else if(t=='o'){
+    const {data,error}=await sb.from('ownership_proofs').select('*,listings!listing_id(title,city,area,type,price),owner:profiles!owner_id(name)').eq('status','pending').order('created_at');
+    if(error)h=`<p class="er">${esc(error.message)}</p>`;
+    else{
+      const rows=data||[],ids=[...new Set(rows.map(r=>r.owner_id))],kn={};
+      if(ids.length){const q=await sb.from('kyc').select('user_id,full_name').in('user_id',ids);(q.data||[]).forEach(x=>kn[x.user_id]=x.full_name)}
+      const paths=[...new Set(rows.flatMap(r=>r.file_paths||[]))],su={};
+      if(paths.length){const r=await sb.storage.from('kyc-docs').createSignedUrls(paths,1800);(r.data||[]).forEach(x=>{if(x.signedUrl)su[x.path]=x.signedUrl})}
+      OQ=rows;
+      const OR=['Document is unclear. Please upload again.','Name on the document does not match the owner’s ID.','Document does not match this property.','This type of document is not accepted.'];
+      h=rows.map((r,i)=>`<div class="note kc"><b>${esc(r.listings?.title)}</b><br><span class="mu">${esc(r.listings?.area?r.listings.area+', ':'')}${esc(r.listings?.city)} · ${esc(r.listings?.type)}</span><br>Owner account: <b>${esc(r.owner?.name)}</b><br>Name on their ID: <b>${esc(kn[r.owner_id]||'not on file')}</b><br>Document type: <b>${esc(r.doc_type)}</b>${r.note?`<br><span class="mu">Note: ${esc(r.note)}</span>`:''}<div class="dg" style="margin-top:8px">${(r.file_paths||[]).map(f=>su[f]?(/\.(jpe?g|png|webp|gif|heic)$/i.test(f)?`<div class="dc"><img src="${su[f]}" alt="" onclick="lbox('${su[f]}')"></div>`:`<div class="dc"><a href="${su[f]}" target="_blank" rel="noopener">Open document ↗</a></div>`):'').join('')}</div><p class="mu" style="margin:10px 0 0"><b>Check:</b> the name on the document matches the owner's ID name, and the document describes this property.</p><select id="os${i}"><option value="">Reject reason (pick one)…</option>${OR.map(x=>`<option>${esc(x)}</option>`).join('')}</select><input id="ot${i}" placeholder="…or type your own reason"><div class="row" style="margin-top:10px"><button class="btn" onclick="oreview(${i},true)">✔ Approve ownership</button><button class="btn o" onclick="oreview(${i},false)">Reject</button></div></div>`).join('')||'<p class="mu">No pending ownership proofs.</p>';
+    }
   }else if(t=='p'){
     const {data,error}=await sb.from('promo_requests').select('*,listings!listing_id(title),profiles!user_id(name)').eq('status','pending').order('created_at');
     h=error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(p=>`<div class="note"><b>${esc(p.listings?.title)}</b><br>${esc(p.profiles?.name)} · ${p.days} days · ${p.days==30?'₦15,000':'₦5,000'}<div class="row" style="margin-top:8px"><button class="btn" onclick="pa(${p.id},true)">Paid: activate</button><button class="btn o" onclick="pa(${p.id},false)">Dismiss</button></div></div>`).join('')||'<p class="mu">No pending sponsorship requests.</p>';
@@ -748,6 +763,7 @@ function settingsM0(){
   <label class="mu">Name</label><input id="sn" value="${esc(prof?.name||'')}">
   <label class="mu">I am a…</label><select id="sr">${Object.entries(ROLE).map(([k,v])=>`<option value="${k}"${prof?.role==k?' selected':''}>${v}</option>`).join('')}</select>
   ${prof?.role!='buyer'?`<label class="mu">Agency / company (optional)</label><input id="sa" maxlength="80" value="${esc(prof?.agency||'')}"><label class="mu">About me (shown on your public profile)</label><textarea id="sbio" rows="4" maxlength="400" placeholder="Areas you cover, years of experience, languages…">${esc(prof?.bio||'')}</textarea><label class="mu">WhatsApp number for clients who pay you (private until a client pays)</label><input id="swa" type="tel" placeholder="e.g. 0803 123 4567">`:''}<label class="mu" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="se" style="width:auto;margin:0" ${prof?.email_alerts!==false?'checked':''}> Email me about new messages</label>
+  <label class="mu" style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" id="sact" style="width:auto;margin:3px 0 0" ${prof?.share_activity!==false?'checked':''}> Let agents and owners I have messaged see when I'm active on Nesta, for example that I viewed similar homes. They never see my searches or personal details.</label>
   <button class="btn w" onclick="saveSet()">Save changes</button><p id="er" class="er"></p>
   <h3>Appearance</h3><div class="row">${[['','Auto'],['light','☀️ Light'],['dark','🌙 Dark']].map(([k,v])=>`<button class="btn${th==k?'':' o'}" onclick="themeSet('${k}')">${v}</button>`).join('')}</div>
   <h3>Alerts</h3><button class="btn o w" onclick="alertsOn()">🔔 Browser alerts</button>
@@ -758,7 +774,7 @@ function settingsM0(){
 async function saveSet(){
   const name=$('sn').value.trim().slice(0,40),role=$('sr').value,email_alerts=$('se').checked;
   if(!name)return err('Add your name');
-  const upd={name,role,email_alerts};
+  const upd={name,role,email_alerts,share_activity:$('sact').checked};
   if($('sa')){upd.agency=$('sa').value.trim().slice(0,80)||null;upd.bio=$('sbio').value.trim().slice(0,400)||null}
   const {error}=await sb.from('profiles').update(upd).eq('id',me.id);
   if(error)return err(error.message);
@@ -854,10 +870,10 @@ const ID_T={nin:'NIN slip or card',national_id:'National ID card',passport:'Inte
 const KST={none:'Not started',pending:'⏳ Under review',approved:'✔ Approved',rejected:'⚠ Needs changes'};
 let KY={},KQ=[];
 const lvl=p=>p?.kyc_level||0;
-function vb(l){const v=lvl(l.profiles);if(l.direct_owner)return '<span class="tag v own">🏠 Direct Owner ✔</span>';return v>=2?'<span class="tag v gold">★ Nesta Verified</span>':v==1?'<span class="tag v">🛡 Verified</span>':''}
+function vb(l){const v=lvl(l.profiles);if(l.direct_owner)return l.ownership_verified?'<span class="tag v own2">🛡 Verified Owner</span>':'<span class="tag v own">🏠 Direct Owner ✔</span>';return v>=2?'<span class="tag v gold">★ Nesta Verified</span>':v==1?'<span class="tag v">🛡 Verified</span>':''}
 function vt(l){
   const p=l.profiles,v=lvl(p),r=RT[l.owner_id]||[],a=r.length?' · ★ '+(r.reduce((x,y)=>x+y.stars,0)/r.length).toFixed(1)+' ('+r.length+')':'';
-  return (l.direct_owner?'<b style="color:#0E7490">🏠 Direct Owner · ID verified</b>':v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'(unverified)')+a;
+  return (l.direct_owner?ownTxt(l):v>=2?`<b style="color:var(--ac)">★ Nesta Verified ${esc(ROLE[p.role]||'')}</b>`:v==1?'<b class="ok">✔ Verified</b>':'(unverified)')+a;
 }
 async function joinOwner(){
   if(!me)return authM(true,'landlord');
@@ -1100,7 +1116,7 @@ async function escM(lid){
   if(!me)return authM();
   const l=L.find(x=>x.id==lid);if(!l)return;
   const it=[['Agency Fee',l.agency_fee],['Agreement Fee',l.agreement_fee],['Caution / Other fees',l.caution_fee]].filter(x=>x[1]>0),tot=it.reduce((a,x)=>a+Number(x[1]),0),mode=await escMode();
-  openM(`<h2>Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run of the payment flow.</div>':''}<div class="agent" style="margin:8px 0"><div class="av">${esc((l.profiles?.name||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(l.profiles?.name||'Agent')}</b><br>${l.direct_owner?'<span style="color:#0E7490;font-weight:700">🏠 Direct Owner · ID verified</span>':'<span style="color:var(--ac);font-weight:700">★ Nesta Verified Agent</span>'}</div></div><p class="mu" style="margin-top:0">${esc(l.title)}</p><div class="facts" style="grid-template-columns:1fr">${it.map(x=>`<div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total to be held</b><b>${N(tot)}</b></div></div><p class="mu" style="font-size:13px">Total move-in cost including one year's rent: <b>${N(mvCost(l).total)}</b></p><p class="mu" style="font-size:13px">This payment covers the fees only. The rent is paid separately under your tenancy agreement.</p><p class="mu">Your money is held safely by Nesta. ${l.direct_owner?'The owner':'The agent'} only receives it after you confirm.</p><p class="mu" style="font-size:13px">You can raise a dispute anytime before the funds are released.</p><p class="mu" style="font-size:13px">If you do not respond within ${ESC_DAYS} days, the funds are released to ${l.direct_owner?'the owner':'the agent'} automatically. We warn you 48 hours before.</p><button class="btn w" id="escb" data-l="Pay ${N(tot)} Securely" onclick="escPay(${l.id})">Pay ${N(tot)} Securely</button><p id="er" class="er"></p>`);
+  openM(`<h2>Pay Securely with ${ESC_NAME}</h2>${mode=='test'?'<div class="note"><b>🧪 TEST MODE</b><br>No real money is charged. This is a practice run of the payment flow.</div>':''}<div class="agent" style="margin:8px 0"><div class="av">${esc((l.profiles?.name||'?').slice(0,1).toUpperCase())}</div><div><b>${esc(l.profiles?.name||'Agent')}</b><br>${l.direct_owner?(l.ownership_verified?'<span style="color:#0B5563;font-weight:700">🛡 Verified Owner</span>':'<span style="color:#0E7490;font-weight:700">🏠 Direct Owner · ID verified</span>'):'<span style="color:var(--ac);font-weight:700">★ Nesta Verified Agent</span>'}</div></div><p class="mu" style="margin-top:0">${esc(l.title)}</p><div class="facts" style="grid-template-columns:1fr">${it.map(x=>`<div style="display:flex;justify-content:space-between"><span>${x[0]}</span><b>${N(x[1])}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;background:var(--pr2)"><b>Total to be held</b><b>${N(tot)}</b></div></div><p class="mu" style="font-size:13px">Total move-in cost including one year's rent: <b>${N(mvCost(l).total)}</b></p><p class="mu" style="font-size:13px">This payment covers the fees only. The rent is paid separately under your tenancy agreement.</p><p class="mu">Your money is held safely by Nesta. ${l.direct_owner?'The owner':'The agent'} only receives it after you confirm.</p><p class="mu" style="font-size:13px">You can raise a dispute anytime before the funds are released.</p><p class="mu" style="font-size:13px">If you do not respond within ${ESC_DAYS} days, the funds are released to ${l.direct_owner?'the owner':'the agent'} automatically. We warn you 48 hours before.</p><button class="btn w" id="escb" data-l="Pay ${N(tot)} Securely" onclick="escPay(${l.id})">Pay ${N(tot)} Securely</button><p id="er" class="er"></p>`);
 }
 async function escPay(lid){
   const b=$('escb');b.disabled=true;b.textContent='Processing…';
@@ -1337,6 +1353,136 @@ async function statusSave(id){
 }
 
 sb.from('app_settings').select('value').eq('key','inspection_fee').maybeSingle().then(r=>{if(r.data)INSF=Number(r.data.value)||5000});
+/* ---------- proof of ownership: stronger "Verified Owner" badge ---------- */
+const ownTxt=l=>l.ownership_verified?'<b style="color:#0B5563">🛡 Verified Owner · ownership proof checked</b>':'<b style="color:#0E7490">🏠 Direct Owner · ID verified</b>';
+const OWN_DOCS=['Certificate of Occupancy (C of O)','Deed of Assignment',"Governor's Consent",'Survey plan','Sale or purchase agreement','Other title document'];
+let OQ=[];
+async function loadOwnProof(l){
+  const el=$('ownbox');if(!el)return;
+  if(l.ownership_verified){el.innerHTML=`<div class="note" style="background:#D8F0F4;color:#0B5563;margin:0"><b>🛡 Ownership verified</b><br>${esc(l.ownership_doc||'')}. Your listing shows the stronger <b>Verified Owner</b> badge. Changing the state, area or property type removes it and needs a new review.</div>`;return}
+  const {data}=await sb.from('ownership_proofs').select('*').eq('listing_id',l.id).order('created_at',{ascending:false}).limit(1);
+  const p=(data||[])[0];
+  const st=p?.status=='pending'?'<p class="mu">⏳ Under review. We usually reply within a day or two.</p>':p?.status=='rejected'?`<p class="er">Not approved: ${esc(p.reject_reason||'')}. You can upload again.</p>`:'';
+  el.innerHTML=`<h3>🛡 Get the Verified Owner badge</h3><p class="mu" style="margin-top:0">Upload proof that you own this property. Verified Owners get a stronger badge and rank higher in search.</p>${st}${p?.status=='pending'?'':`<button class="btn w" onclick="ownM(${l.id})">Upload proof of ownership</button>`}`;
+}
+function ownM(lid){
+  openM(`<h2>🛡 Proof of ownership</h2><p class="mu" style="margin-top:0">Upload a clear photo or PDF of your title document. The name on it should match your ID.</p><select id="odt">${OWN_DOCS.map(d=>`<option>${esc(d)}</option>`).join('')}</select><label class="mu">Document pages (1 to 3 files)</label><input id="ofl" type="file" accept="image/*,application/pdf" multiple><textarea id="onote" rows="2" maxlength="300" placeholder="Anything we should know? (optional)"></textarea><label class="mu" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="oc" style="width:auto;margin-top:4px"> I agree that Nesta may use these documents only to check ownership. They are stored privately and only Nesta's review team can open them.</label><button class="btn w" id="osb" onclick="ownSend(${lid})">Submit for review</button><p id="er" class="er"></p>`);
+}
+async function ownSend(lid){
+  const fs=[...$('ofl').files].slice(0,3);
+  if(!fs.length)return err('Upload at least one file');
+  if(!$('oc').checked)return err('Please tick the consent box');
+  const b=$('osb');b.disabled=true;b.textContent='Uploading…';
+  try{
+    const paths=[];for(const f of fs)paths.push(await kUp(f,'own'+lid));
+    const r=await sb.from('ownership_proofs').insert({listing_id:lid,doc_type:$('odt').value,file_paths:paths,note:$('onote').value.trim().slice(0,300)||null});
+    if(r.error)throw r.error;
+    openM('<h2>Submitted ✔</h2><p>We will review your document and update this listing. You will see the stronger <b>Verified Owner</b> badge once it is approved.</p><button class="btn w" onclick="closeM();show('+lid+')">Back to my listing</button>');
+  }catch(e){err(e.message||String(e));b.disabled=false;b.textContent='Submit for review'}
+}
+async function oreview(i,ok){
+  const r=OQ[i];let reason=null;
+  if(!ok){reason=($('ot'+i).value.trim()||$('os'+i).value||'').slice(0,200);if(!reason)return alert('Pick or type a reason, so the owner knows what to fix.')}
+  const {error}=await sb.rpc('review_ownership',{pid:r.id,approve:ok,reason});
+  if(error)return alert(error.message);
+  await loadAll();adminM('o');
+}
+
+/* ---------- shared deal rooms ---------- */
+let LEADN=0,VL={},ROOMFROM='';
+const agoTxt=ts=>{const m=Math.max(1,Math.round((Date.now()-new Date(ts))/6e4));return m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' days ago'};
+function chatNote(id){
+  const t=TH.find(x=>x.id==id);
+  return t&&me&&t.buyer_id==me.id?'<div class="mu" style="font-size:12px;padding:6px 12px 0">🔒 Agents you message can see when you are active on Nesta. You can change this in Settings.</div>':'';
+}
+async function roomOpen(tid){
+  if(!me)return authM();
+  const ex=await sb.from('deal_rooms').select('id').eq('thread_id',tid).maybeSingle();
+  if(ex.data)return roomM(ex.data.id,'chat');
+  const r=await sb.rpc('room_open',{tid});if(r.error)return alert(r.error.message);
+  await sb.from('messages').insert({thread_id:tid,body:'🤝 I opened a private deal room for this conversation. Tap the 🤝 button at the top of this chat to open it. It keeps the property, documents, viewing notes and payment status in one place.'});
+  roomM(r.data,'chat');
+}
+async function roomsM(){
+  if(!me)return authM();
+  const {data,error}=await sb.from('deal_rooms').select('*').or(`client_id.eq.${me.id},agent_id.eq.${me.id}`).order('created_at',{ascending:false});
+  const R=data||[],ids=[...new Set(R.map(r=>r.client_id==me.id?r.agent_id:r.client_id))],nm={};
+  if(ids.length){const q=await sb.from('profiles').select('id,name').in('id',ids);(q.data||[]).forEach(x=>nm[x.id]=x.name)}
+  openF('🤝 Deal rooms',`<p class="mu" style="margin-top:0">A private room shared by you and one other person. It holds the property, documents, viewing notes and payment status. Open one from the 🤝 button inside any chat.</p>${error?`<p class="er">${esc(error.message)}</p>`:R.length?R.map(r=>`<div class="note pt" onclick="roomM(${r.id},'list')"><b>${esc(r.listing_title||'General conversation')}</b><br>With ${esc(nm[r.client_id==me.id?r.agent_id:r.client_id]||'')} · opened ${dayY(r.created_at)}</div>`).join(''):'<p class="mu">No deal rooms yet.</p>'}`,accM);
+}
+async function roomM(rid,from){
+  ROOMFROM=from||'';
+  const {data:rm,error}=await sb.from('deal_rooms').select('*').eq('id',rid).maybeSingle();
+  if(error||!rm)return alert(error?.message||'Deal room not found');
+  const [nt,dc,py,pf]=await Promise.all([
+    sb.from('room_notes').select('*').eq('room_id',rid).order('created_at',{ascending:false}).limit(100),
+    sb.from('room_docs').select('*').eq('room_id',rid).order('created_at',{ascending:false}).limit(100),
+    sb.rpc('room_payments',{rid}),
+    sb.from('profiles').select('id,name,role,verified,kyc_level').in('id',[rm.client_id,rm.agent_id])]);
+  const P=Object.fromEntries((pf.data||[]).map(x=>[x.id,x])),nm=id=>esc(P[id]?.name||'—');
+  const paths=(dc.data||[]).map(d=>d.path),su={};
+  if(paths.length){const r=await sb.storage.from('room-docs').createSignedUrls(paths,1800);(r.data||[]).forEach(x=>{if(x.signedUrl)su[x.path]=x.signedUrl})}
+  const l=rm.listing_id?L.find(x=>x.id==rm.listing_id):null,im=l&&(l.media||[]).find(q=>q.kind=='image');
+  const mine=rm.client_id==me.id,other=mine?rm.agent_id:rm.client_id,op=P[other]||{};
+  const KL={agency:'Rent fees',deal:'Payment',inspection:'Inspection fee'},KN={note:'📝',viewing:'📅',agreement:'✅'};
+  const IS={booked:'Inspection Booked',completed:'Completed',confirmed:'Confirmed',disputed:'⚠ Disputed',cancelled:'Cancelled'};
+  const prop=l?`<div class="agent" style="cursor:pointer" onclick="show(${l.id})"><div class="av" style="width:64px;height:64px;border-radius:12px;background:${im?`url('${mu(im.path)}') center/cover`:'var(--pr2)'}">${im?'':'🏠'}</div><div style="flex:1"><b>${esc(l.title)}</b><br><span class="mu">${N(l.price)}${l.mode=='rent'?' / yr':''} · ${esc(l.city)}</span>${isGone(l)?`<br><b style="color:#c53030">${ST_LBL(l)}</b>`:''}<br><span style="color:var(--pr);font-size:13px">Open listing ›</span></div></div>`:`<div class="note" style="margin:0"><b>${esc(rm.listing_title||'General conversation')}</b></div>`;
+  const pay=(py.data||[]).map(x=>x.src=='escrow'?`<div class="note" style="margin:6px 0"><b>${KL[x.kind]||'Payment'}</b> · ${N(x.amount)}<br>${EST[x.status]||esc(x.status)}</div>`:`<div class="note" style="margin:6px 0"><b>📅 Inspection</b> · ${esc(x.detail||'')}<br>${IS[x.status]||esc(x.status)}</div>`).join('')||'<p class="mu" style="margin:0">No payments yet.</p>';
+  const notes=(nt.data||[]).map(n=>`<div class="rv"><b>${KN[n.kind]||'📝'} ${nm(n.author_id)}</b> <span class="mu">· ${dayY(n.created_at)}</span>${n.viewing_at?`<br><b>Viewing:</b> ${new Date(n.viewing_at).toLocaleString('en-NG',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}`:''}<div>${esc(n.body)}</div></div>`).join('')||'<p class="mu">No notes yet.</p>';
+  const docs=(dc.data||[]).map(d=>`<div class="rv"><b>📎 ${esc(d.name)}</b><br><span class="mu">${nm(d.uploader_id)} · ${dayY(d.created_at)}</span> · ${su[d.path]?`<a href="${su[d.path]}" target="_blank" rel="noopener">Open ↗</a>`:'<span class="mu">unavailable</span>'}</div>`).join('')||'<p class="mu">No documents yet.</p>';
+  const back=from=='list'?roomsM:()=>thread(rm.thread_id);
+  openF('🤝 Deal room',`<p class="mu" style="margin-top:0">Private to you and ${nm(other)}. Notes and documents can not be edited or deleted, so there is a clear record for both of you.</p>${prop}
+  <div class="agent" style="margin-top:10px"><div class="av">${esc((op.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${nm(other)}</b><br><span class="mu">${mine?'Your agent or owner':'Your client'}</span></div><button class="btn o" onclick="thread(${rm.thread_id})">💬 Chat</button></div>
+  <h3>Payments &amp; inspection</h3>${pay}<div class="row" style="margin-top:6px"><button class="btn o" onclick="payM()">💼 Secure payments</button><button class="btn" onclick="dealFromThread(${rm.thread_id})">🔒 Start a payment</button></div>
+  <h3>Viewing notes &amp; timeline</h3><select id="rnk" onchange="$('rnv').style.display=this.value=='viewing'?'':'none'"><option value="note">📝 Note</option><option value="viewing">📅 Viewing scheduled</option><option value="agreement">✅ Agreement or decision</option></select><input id="rnv" type="datetime-local" style="display:none"><textarea id="rnb" rows="2" maxlength="1000" placeholder="What was discussed or agreed?"></textarea><button class="btn w" onclick="noteAdd(${rid},${rm.thread_id})">Add to timeline</button>${notes}
+  <h3>Documents</h3><input id="rdn" placeholder="Document name (optional)" maxlength="120"><input id="rdf" type="file" accept="image/*,application/pdf"><button class="btn w" id="rdb" onclick="docAdd(${rid},${rm.thread_id})">Upload document</button>${docs}`,back);
+}
+async function noteAdd(rid,tid){
+  const kind=$('rnk').value,body=$('rnb').value.trim(),vt=$('rnv').value;
+  if(!body)return alert('Write a note first');
+  if(kind=='viewing'&&!vt)return alert('Pick the viewing date and time');
+  const {error}=await sb.from('room_notes').insert({room_id:rid,kind,body:body.slice(0,1000),viewing_at:kind=='viewing'?new Date(vt).toISOString():null});
+  if(error)return alert(error.message);
+  if(kind!='note')await sb.from('messages').insert({thread_id:tid,body:(kind=='viewing'?'📅 Viewing scheduled: ':'✅ Agreement noted: ')+body.slice(0,120)+' (see our deal room 🤝)'});
+  roomM(rid,ROOMFROM);
+}
+async function docAdd(rid,tid){
+  const f=$('rdf').files[0];if(!f)return alert('Choose a file first');
+  if(f.size>25e6)return alert('That file is too large (max 25MB)');
+  const b=$('rdb');b.disabled=true;b.textContent='Uploading…';
+  try{
+    let blob=f,ext=(f.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'bin',ct=f.type;
+    if((f.type||'').startsWith('image/')){blob=await shrink(f);ext='jpg';ct='image/jpeg'}
+    const path=`${rid}/${me.id}-${Date.now()}.${ext}`;
+    const up=await sb.storage.from('room-docs').upload(path,blob,{contentType:ct||'application/octet-stream'});if(up.error)throw up.error;
+    const name=($('rdn').value.trim()||f.name).slice(0,120);
+    const r=await sb.from('room_docs').insert({room_id:rid,name,path});if(r.error)throw r.error;
+    await sb.from('messages').insert({thread_id:tid,body:'📎 I added a document to our deal room: '+name});
+    roomM(rid,ROOMFROM);
+  }catch(e){alert(e.message||String(e));b.disabled=false;b.textContent='Upload document'}
+}
+
+/* ---------- light client activity signals (for agents and owners) ---------- */
+async function leadPing(){
+  try{
+    if(!prof||prof.role=='buyer'){LEADN=0;return}
+    const r=await sb.rpc('agent_leads'),seen=Number(localStorage.getItem('nesta-leads-seen')||0);
+    LEADN=(r.data||[]).filter(x=>x.score>=60&&x.last_active&&new Date(x.last_active).getTime()>seen).length;
+  }catch(e){}
+}
+async function leadsM(){
+  const {data,error}=await sb.rpc('agent_leads');
+  const seen=Number(localStorage.getItem('nesta-leads-seen')||0),L2=data||[];
+  const lab=s=>s>=60?['hot','🔥 Hot']:s>=30?['warm','🟠 Warm']:['cool','🟢 Active'];
+  const row=x=>{
+    const [c,t]=lab(x.score),isNew=x.last_active&&new Date(x.last_active).getTime()>seen;
+    const chips=[x.escrow_started?'🔒 Started a secure payment':'',x.inspection_booked?'📅 Booked an inspection':'',x.viewed_yours?`👀 Viewed ${x.viewed_yours} of your listing${x.viewed_yours==1?'':'s'}`:'',x.viewed_similar?`🔎 Viewed ${x.viewed_similar} similar home${x.viewed_similar==1?'':'s'}`:'',x.saved?`♥ Saved ${x.saved}`:''].filter(Boolean);
+    return `<div class="note"><b>${esc(x.contact_name)}</b> <span class="chip ${c}">${t}</span>${isNew?' <span class="chip" style="background:var(--ac);color:#fff">New</span>':''}<br><span class="mu">Active ${agoTxt(x.last_active)}${x.listing_title?' · chatted about '+esc(x.listing_title):''}</span><div style="margin-top:6px">${chips.map(c=>`<span class="chip">${c}</span>`).join('')||'<span class="mu">Browsing</span>'}</div><div class="row" style="margin-top:8px"><button class="btn o" onclick="thread(${x.thread_id})">💬 Message</button><button class="btn o" onclick="roomOpen(${x.thread_id})">🤝 Deal room</button></div></div>`;
+  };
+  openF('📈 Client activity',`<p class="mu" style="margin-top:0">People you have messaged who were active on Nesta in the last 14 days. You only see general signals, never their searches or personal details, and only for people who allow it in Settings.</p>${error?`<p class="er">${esc(error.message)}</p>`:L2.length?L2.map(row).join(''):'<p class="mu">No recent activity from your contacts yet. When someone you have messaged views similar homes, saves a listing or starts a payment, they appear here.</p>'}`,accM);
+  localStorage.setItem('nesta-leads-seen',String(Date.now()));LEADN=0;
+}
+
 loadAll();
 </script>
 </body>
