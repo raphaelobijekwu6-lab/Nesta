@@ -216,6 +216,7 @@ footer a{color:var(--pr)}
 .ownck{display:flex;gap:8px;align-items:center;background:#D8F0F4;color:#0E5566;border-radius:10px;padding:10px 12px;margin:6px 0;font-size:14px}.ownck input{width:auto;margin:0}
 .tag.v.own2{background:#0B5563;color:#fff;border:1.5px solid #E3C16F}
 .chip.hot{background:#FDE7DC;color:#B54708}.chip.warm{background:#FEF3D7;color:#8A5A00}.chip.cool{background:#E8F1EC;color:#2D6A4F}
+.ssbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}.ssbar .btn{position:relative;padding:8px 14px;font-size:14px}
 </style>
 </head>
 <body>
@@ -234,6 +235,7 @@ footer a{color:var(--pr)}
 </div>
 <label class="mvc"><input type="checkbox" id="mvt" onchange="render()"> For rentals, my budget is the <b>total move-in cost</b> (rent + fees). Shows only listings with fees listed.</label>
 <div class="tabs" id="tabs"></div>
+<div class="ssbar"><button class="btn o" onclick="ssSaveM()">💾 Save this search</button><button class="btn o" onclick="searchesM()">🔔 My searches<span class="bdg" id="ssn"></span></button></div>
 <div class="join"><button class="btn o" onclick="joinAgent()">Join as Agent · List Property</button> <button class="btn o own" onclick="joinOwner()">🏠 I'm an owner</button></div>
 </section>
 <div class="sh"><h2>Homes for you <span class="vl">Verified Listings</span></h2><span style="display:flex;gap:8px;align-items:center"><span class="mu" id="rc"></span><select id="sort" onchange="render()" style="width:auto;margin:0;padding:6px 8px;font-size:13px"><option value="">Recommended</option><option value="mv">Lowest move-in cost</option><option value="plh">Price: low to high</option><option value="phl">Price: high to low</option><option value="new">Newest</option></select></span></div>
@@ -283,7 +285,7 @@ async function setUser(u){
   }
   $('acb').textContent=prof?'👤 '+prof.name.split(' ')[0]:'Sign in';
   $('msgb').style.display=me?'inline-block':'none';
-  if(me){await loadChat();startRT();escCheck();leadPing()}else{stopRT();TH=[];MG=[];RD={};updBadge()}
+  if(me){await loadChat();startRT();escCheck();leadPing();ssLoad()}else{SS=[];SSN=0;ssBadge();stopRT();TH=[];MG=[];RD={};updBadge()}
   render();
 }
 async function loadAll(){
@@ -296,6 +298,7 @@ async function loadAll(){
   L=a.data||[];PM={};(b.data||[]).forEach(p=>PM[p.listing_id]=new Date(p.until).getTime());INS=c.data||[];RT={};(d.data||[]).forEach(r=>{(RT[r.inspector_id]=RT[r.inspector_id]||[]).push(r)});render();
   const q=new URLSearchParams(location.search).get('l');if(q&&!window._dl){window._dl=1;show(+q)}
   const pp=new URLSearchParams(location.search).get('p');if(pp&&!window._dp){window._dp=1;profileM(pp)}
+  ssLoad();
 }
 
 /* ---------- list + map ---------- */
@@ -1476,12 +1479,80 @@ async function leadsM(){
   const lab=s=>s>=60?['hot','🔥 Hot']:s>=30?['warm','🟠 Warm']:['cool','🟢 Active'];
   const row=x=>{
     const [c,t]=lab(x.score),isNew=x.last_active&&new Date(x.last_active).getTime()>seen;
-    const chips=[x.escrow_started?'🔒 Started a secure payment':'',x.inspection_booked?'📅 Booked an inspection':'',x.viewed_yours?`👀 Viewed ${x.viewed_yours} of your listing${x.viewed_yours==1?'':'s'}`:'',x.viewed_similar?`🔎 Viewed ${x.viewed_similar} similar home${x.viewed_similar==1?'':'s'}`:'',x.saved?`♥ Saved ${x.saved}`:''].filter(Boolean);
+    const chips=[x.escrow_started?'🔒 Started a secure payment':'',x.inspection_booked?'📅 Booked an inspection':'',x.viewed_yours?`👀 Viewed ${x.viewed_yours} of your listing${x.viewed_yours==1?'':'s'}`:'',x.viewed_similar?`🔎 Viewed ${x.viewed_similar} similar home${x.viewed_similar==1?'':'s'}`:'',x.saved?`♥ Saved ${x.saved}`:'',x.saved_search?'🔔 Saved a search for homes like yours':''].filter(Boolean);
     return `<div class="note"><b>${esc(x.contact_name)}</b> <span class="chip ${c}">${t}</span>${isNew?' <span class="chip" style="background:var(--ac);color:#fff">New</span>':''}<br><span class="mu">Active ${agoTxt(x.last_active)}${x.listing_title?' · chatted about '+esc(x.listing_title):''}</span><div style="margin-top:6px">${chips.map(c=>`<span class="chip">${c}</span>`).join('')||'<span class="mu">Browsing</span>'}</div><div class="row" style="margin-top:8px"><button class="btn o" onclick="thread(${x.thread_id})">💬 Message</button><button class="btn o" onclick="roomOpen(${x.thread_id})">🤝 Deal room</button></div></div>`;
   };
   openF('📈 Client activity',`<p class="mu" style="margin-top:0">People you have messaged who were active on Nesta in the last 14 days. You only see general signals, never their searches or personal details, and only for people who allow it in Settings.</p>${error?`<p class="er">${esc(error.message)}</p>`:L2.length?L2.map(row).join(''):'<p class="mu">No recent activity from your contacts yet. When someone you have messaged views similar homes, saves a listing or starts a payment, they appear here.</p>'}`,accM);
   localStorage.setItem('nesta-leads-seen',String(Date.now()));LEADN=0;
 }
+
+/* ---------- saved searches ---------- */
+let SS=[],SSN=0;
+const MODEL={all:'All',buy:'Buy',rent:'Rent',flip:'Flip deals'};
+function curFilters(){return {mode,city:$('city').value,type:$('type').value,max:$('max').value||'',q:($('q').value||'').trim().slice(0,60),vo,av,dof,mvt:!!$('mvt')?.checked,sort:$('sort')?.value||''}}
+function fSummary(f){
+  const p=[];
+  if(f.mode&&f.mode!='all')p.push(MODEL[f.mode]||f.mode);
+  if(f.type)p.push(f.type);
+  if(f.city)p.push(f.city);
+  if(f.q)p.push('“'+f.q+'”');
+  if(+f.max)p.push((f.mvt?'move-in cost ':'')+'under '+N(+f.max));
+  if(f.dof)p.push('Direct from Owner');
+  if(f.vo)p.push('Verified');
+  if(f.av)p.push('Available only');
+  return p.join(' · ')||'All homes';
+}
+function matchF(f,l){
+  const qq=(f.q||'').trim().toLowerCase(),mx=+f.max||1e15,tot=f.mvt&&l.mode=='rent';
+  return (!f.mode||f.mode=='all'||l.mode==f.mode)&&(!f.city||l.city==f.city)&&(!f.type||l.type==f.type)
+    &&(!qq||[l.title,l.area,l.city,l.description,l.type].join(' ').toLowerCase().includes(qq))
+    &&(tot?(mvCost(l).set&&mvCost(l).total<=mx):l.price<=mx)
+    &&(!f.vo||l.profiles?.verified)&&(!f.av||!isGone(l))&&(!f.dof||l.direct_owner);
+}
+const ssNew=s=>L.filter(l=>matchF(s.filters,l)&&!isGone(l)&&l.owner_id!=me?.id&&new Date(l.created_at)>new Date(s.last_seen_at)).length;
+function ssBadge(){const b=$('ssn');if(b){b.textContent=SSN>9?'9+':(SSN||'');b.style.display=SSN?'inline-block':'none'}}
+async function ssLoad(){
+  if(!me){SS=[];SSN=0;ssBadge();return}
+  const {data}=await sb.from('saved_searches').select('*').order('created_at',{ascending:false});
+  SS=data||[];SSN=SS.filter(s=>s.alerts).reduce((a,s)=>a+ssNew(s),0);ssBadge();
+  if(SSN>0&&L.length&&!window._sst){window._sst=1;toast('🔔 '+SSN+' new home'+(SSN==1?'':'s')+' match your saved searches',null,()=>searchesM())}
+}
+function ssSaveM(){
+  if(!me)return authM();
+  const f=curFilters(),nm=fSummary(f);window._ssf=f;
+  openM(`<h2>💾 Save this search</h2><p class="mu" style="margin-top:0">${esc(nm)}</p><input id="ssname" maxlength="60" value="${esc(nm.slice(0,60))}" placeholder="Name this search"><label class="mu" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="ssal" style="width:auto;margin:0" checked> Alert me in Nesta when new homes match</label><button class="btn w" onclick="ssSave()">Save search</button><p id="er" class="er"></p>`);
+}
+async function ssSave(){
+  const name=$('ssname').value.trim().slice(0,60)||'My search';
+  const {error}=await sb.from('saved_searches').insert({name,filters:window._ssf,alerts:$('ssal').checked});
+  if(error)return err(error.message);
+  await ssLoad();
+  openM('<h2>✅ Search saved</h2><p>When new homes match, you will see a 🔔 badge here.</p><button class="btn w" onclick="searchesM()">My saved searches</button><button class="btn o w" onclick="closeM()">Done</button>');
+}
+async function searchesM(){
+  if(!me)return authM();
+  await ssLoad();
+  const row=s=>{
+    const n=ssNew(s),all=L.filter(l=>matchF(s.filters,l)).length;
+    return `<div class="note"><b>${esc(s.name)}</b>${n&&s.alerts?` <span class="chip" style="background:var(--ac);color:#fff">${n} new</span>`:''}<br><span class="mu">${esc(fSummary(s.filters))}</span><br><span class="mu">${all} home${all==1?'':'s'} match now</span><div class="row" style="margin-top:8px"><button class="btn" onclick="ssRun(${s.id})">View results</button><button class="btn o" onclick="ssAlert(${s.id},${!s.alerts})">${s.alerts?'🔔 Alerts on':'🔕 Alerts off'}</button><button class="btn o" onclick="ssDel(${s.id})">Delete</button></div></div>`;
+  };
+  openF('🔔 My saved searches',SS.length?SS.map(row).join(''):'<p class="mu">No saved searches yet. Set your filters on the home page, then tap <b>💾 Save this search</b>.</p>',null);
+}
+function ssApply(f){
+  mode=f.mode||'all';vo=!!f.vo;av=!!f.av;dof=!!f.dof;
+  $('city').value=f.city||'';$('type').value=f.type||'';$('max').value=f.max||'';$('q').value=f.q||'';
+  if($('mvt'))$('mvt').checked=!!f.mvt;
+  if($('sort'))$('sort').value=f.sort||'';
+  render();
+}
+async function ssRun(id){
+  const s=SS.find(x=>x.id==id);if(!s)return;
+  await sb.from('saved_searches').update({last_seen_at:new Date().toISOString()}).eq('id',id);
+  closeM();ssApply(s.filters);await ssLoad();
+  $('grid').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function ssAlert(id,on){const {error}=await sb.from('saved_searches').update({alerts:on}).eq('id',id);if(error)return alert(error.message);searchesM()}
+async function ssDel(id){if(!confirm('Delete this saved search?'))return;const {error}=await sb.from('saved_searches').delete().eq('id',id);if(error)return alert(error.message);searchesM()}
 
 loadAll();
 </script>
