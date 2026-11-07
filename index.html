@@ -220,6 +220,11 @@ footer a{color:var(--pr)}
 .ov.side{align-items:stretch;justify-content:flex-end}
 .ov.side .mo{width:88%;max-width:380px;height:100%;max-height:none;border-radius:18px 0 0 18px;padding-top:calc(18px + env(safe-area-inset-top,0px));animation:slideR .22s ease-out}
 @keyframes slideR{from{transform:translateX(100%)}to{transform:none}}
+.seal{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#1B4332,#2D6A4F);color:#E3C16F;border:1px solid #E3C16F;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.tchip2{display:inline-block;background:var(--pr2);color:var(--pr);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;margin-left:6px}
+.trbox{display:flex;gap:14px;align-items:center}
+.trring{width:84px;height:84px;border-radius:50%;border:7px solid var(--pr);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none}
+.trring b{font:700 26px Georgia,serif;line-height:1}.trring span{font-size:11px;color:var(--mu)}
 </style>
 </head>
 <body>
@@ -288,7 +293,7 @@ async function setUser(u){
   }
   $('acb').textContent=prof?'👤 '+prof.name.split(' ')[0]:'Sign in';
   $('msgb').style.display=me?'inline-block':'none';
-  if(me){await loadChat();startRT();escCheck();leadPing();ssLoad()}else{SS=[];SSN=0;ssBadge();stopRT();TH=[];MG=[];RD={};updBadge()}
+  if(me){await loadChat();startRT();escCheck();leadPing();vaultPing();ssLoad()}else{SS=[];SSN=0;ssBadge();stopRT();TH=[];MG=[];RD={};updBadge()}
   render();
 }
 async function loadAll(){
@@ -301,7 +306,7 @@ async function loadAll(){
   L=a.data||[];PM={};(b.data||[]).forEach(p=>PM[p.listing_id]=new Date(p.until).getTime());INS=c.data||[];RT={};(d.data||[]).forEach(r=>{(RT[r.inspector_id]=RT[r.inspector_id]||[]).push(r)});render();
   const q=new URLSearchParams(location.search).get('l');if(q&&!window._dl){window._dl=1;show(+q)}
   const pp=new URLSearchParams(location.search).get('p');if(pp&&!window._dp){window._dp=1;profileM(pp)}
-  ssLoad();
+  ssLoad();loadTrust();
 }
 
 /* ---------- list + map ---------- */
@@ -339,7 +344,7 @@ function render(){
 function card(l){
   const m=(l.media||[]).find(x=>x.kind=='image'),sp=isSp(l),MD={buy:'For sale',rent:'For rent',flip:'Flip deal'};
   const specs=[l.beds?`🛏 ${l.beds} bd`:'',l.baths?`🛁 ${l.baths} ba`:'',l.size_sqm?`📐 ${Number(l.size_sqm).toLocaleString()} sqm`:''].filter(Boolean).join(' <i>|</i> ')||esc(l.type);
-  return `<div class="card${sp?' sp':''}${isGone(l)?' gone':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${vb(l)}${sp?'<span class="tag b">SPONSORED</span>':''}${isGone(l)?`<span class="soldb">${ST_LBL(l)}</span>`:l.status=='under_offer'?'<span class="tag b">UNDER OFFER</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(isGone(l)&&l.sold_price?l.sold_price:l.price)}${l.mode=='rent'?'<small> /yr</small>':''}${isGone(l)?`<small> · ${l.status=='sold'?'sold':'rented'}</small>`:''}</div>${l.mode=='rent'?mvLine(l):''}<div class="ad">${esc(l.title)}</div><div class="mu">${l.area?esc(l.area)+', ':''}${esc(l.city)}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div><div class="spc">${specs}</div><span class="pill ${l.mode}">${MD[l.mode]}${l.mode=='flip'?' 🔥':''}</span>${isGone(l)?'':dropPill(l)}</div>${cact(l)}</div>`;
+  return `<div class="card${sp?' sp':''}${isGone(l)?' gone':''}" onclick="show(${l.id})"><div class="img"${m?` style="background-image:url('${mu(m.path)}')"`:''}>${m?'':'<span class="ph">🏠</span>'}${vb(l)}${sp?'<span class="tag b">SPONSORED</span>':''}${isGone(l)?`<span class="soldb">${ST_LBL(l)}</span>`:l.status=='under_offer'?'<span class="tag b">UNDER OFFER</span>':''}<span class="fv" onclick="event.stopPropagation();fav(${l.id})">${FV.has(l.id)?'♥':'♡'}</span></div><div class="cb"><div class="pr">${N(isGone(l)&&l.sold_price?l.sold_price:l.price)}${l.mode=='rent'?'<small> /yr</small>':''}${isGone(l)?`<small> · ${l.status=='sold'?'sold':'rented'}</small>`:''}</div>${l.mode=='rent'?mvLine(l):''}<div class="ad">${esc(l.title)}</div><div class="mu">${l.area?esc(l.area)+', ':''}${esc(l.city)}${l._d!=null?' · '+l._d.toFixed(1)+' km':''}</div><div class="spc">${specs}</div>${trRow(l)}<span class="pill ${l.mode}">${MD[l.mode]}${l.mode=='flip'?' 🔥':''}</span>${isGone(l)?'':dropPill(l)}</div>${cact(l)}</div>`;
 }
 function drawMap(r){
   const el=$('map');
@@ -384,7 +389,7 @@ function openR(h){
 }
 function accM(){
   const v=prof?.verified;
-  openR(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button><button class="btn o w" onclick="payM()">💼 ${['agent','inspector'].includes(prof?.role)?'Escrow Payments':'Secure payments'}</button><button class="btn o w" onclick="inspM()">📅 My inspections</button><button class="btn o w" onclick="roomsM()">🤝 Deal rooms</button>${prof?.role!='buyer'?`<button class="btn o w" onclick="leadsM()">📈 Client activity${LEADN?` (${LEADN} hot)`:''}</button>`:''}${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">🛠 Inspection jobs</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
+  openR(`<h2>${esc(prof?.name)}</h2><p class="mu">${ROLE[prof?.role]||''} ${v?'<b class="ok">✔ Verified</b>':''}</p><button class="btn w" onclick="inbox()">💬 Messages</button><button class="btn o w" onclick="payM()">💼 ${['agent','inspector'].includes(prof?.role)?'Escrow Payments':'Secure payments'}</button><button class="btn o w" onclick="inspM()">📅 My inspections</button><button class="btn o w" onclick="roomsM()">🤝 Deal rooms</button>${prof?.role!='buyer'?`<button class="btn o w" onclick="leadsM()">📈 Client activity${LEADN?` (${LEADN} hot)`:''}</button>`:''}${prof?.role=='agent'?'<button class="btn o w" onclick="credM()">📜 Licences &amp; credentials</button>':''}${['agent','landlord'].includes(prof?.role)?`<button class="btn o w" onclick="vaultM()">🗄 Document vault${VAULTN?` (${VAULTN} new)`:''}</button>`:''}${prof?.role=='inspector'?'<button class="btn o w" onclick="myReqs()">🛠 Inspection jobs</button>':''}${prof?.role!='buyer'?`<button class="btn ${(prof?.kyc_level||0)>=1?'o ':''}w" onclick="kycM()">🪪 Verification${(prof?.kyc_level||0)==2?' · Gold ★':(prof?.kyc_level||0)==1?' · Basic ✔':''}</button>`:''}<button class="btn o w" onclick="settingsM()">⚙️ Settings</button><button class="btn o w" onclick="careM()">🛟 Customer care</button>${isAdm?'<button class="btn w" onclick="adminM()">🛠 Admin</button>':''}<button class="btn o w" onclick="out()">Sign out</button>`);
 }
 async function out(){await sb.auth.signOut();closeM()}
 function verM(){
@@ -431,15 +436,16 @@ function show(id){
    <div class="sec"><h3>Facts &amp; features</h3><div class="facts">${fact('Type',l.type)}${fact('Bedrooms',l.beds)}${fact('Bathrooms',l.baths)}${fact('Size',l.size_sqm?l.size_sqm+' sqm':'')}${fact('Price per sqm',sqmP)}${fact('Title document',l.title_doc)}${fact('Listing',MODE[l.mode])}${fact('State',l.city)}</div>${(l.features||[]).length?`<div style="margin-top:12px">${l.features.map(f=>`<span class="chip">✓ ${esc(f)}</span>`).join('')}</div>`:''}</div>
    ${flip}
    ${pay&&l.mode=='buy'?pay:''}
+   <div class="sec" id="vaultbox"></div>
    <div class="sec"><h3>Price history</h3><div id="phist" class="mu">Loading…</div></div>
    <div class="sec"><h3>Location</h3><div id="dmap"></div><div class="mu" style="margin:6px 0">${exact?'Pin placed by the lister':'Approximate area (the lister did not drop a pin)'}</div><div class="row"><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}">Google Maps</a><a class="btn o" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.apple.com/?daddr=${l.lat},${l.lng}">Apple Maps</a></div></div>
-   ${own&&l.direct_owner?'<div class="sec" id="ownbox"></div>':''}<div class="sec"><h3>${l.direct_owner?'Listed directly by the owner':'Listed by'}</h3>${l.direct_owner?'<p class="mu" style="margin-top:0;font-size:13px">'+(l.ownership_verified?'No agent involved. Nesta checked the owner’s ID and reviewed their '+esc(l.ownership_doc||'ownership document')+'. This is a document check, not a legal title search. Still inspect the property and use a lawyer before paying.':'No agent involved. Nesta checked the owner’s ID and selfie, but not the property title. Always ask to see the documents.')+'</p>':''}<div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge}<br><span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button><button class="btn o" onclick="statusM(${l.id})">🏷 Mark sold / rented</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
+   ${own&&l.direct_owner?'<div class="sec" id="ownbox"></div>':''}<div class="sec"><h3>${l.direct_owner?'Listed directly by the owner':'Listed by'}</h3>${l.direct_owner?'<p class="mu" style="margin-top:0;font-size:13px">'+(l.ownership_verified?'No agent involved. Nesta checked the owner’s ID and reviewed their '+esc(l.ownership_doc||'ownership document')+'. This is a document check, not a legal title search. Still inspect the property and use a lawyer before paying.':'No agent involved. Nesta checked the owner’s ID and selfie, but not the property title. Always ask to see the documents.')+'</p>':''}<div class="agent" onclick="profileM('${l.owner_id}')" style="cursor:pointer"><div class="av">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><div style="flex:1"><b>${esc(p.name||'—')}</b><br>${badge} ${sealHTML(l.owner_id)}<br>${trLine(l.owner_id)}<span class="mu">${r.length?'★ '+avg.toFixed(1)+' · '+r.length+' review'+(r.length==1?'':'s'):'No reviews yet'} · ${esc(ROLE[p.role]||'')}</span><br><span style="color:var(--pr);font-size:13px">View profile ›</span></div>${!own?`<button class="btn o" onclick="event.stopPropagation();chat(${l.id})">💬</button>`:''}${!own?`<button class="btn o" onclick="event.stopPropagation();rateM('${l.owner_id}')">⭐ Rate</button>`:''}</div>${credRow(l.owner_id)}${own?`<div class="row" style="margin-top:8px"><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button><button class="btn o" onclick="statusM(${l.id})">🏷 Mark sold / rented</button></div><div class="row" style="margin-top:8px">${prof?.kyc_level>=1&&!isSp(l)?`<button class="btn" onclick="promoM(${l.id})">⭐ Promote</button>`:''}<button class="btn o" onclick="del(${l.id})">Delete listing</button></div>${isSp(l)?'<div class="note">⭐ This listing is sponsored</div>':''}`:''}${isAdm&&!own?`<div class="row" style="margin-top:8px"><button class="btn o" onclick="del(${l.id})">Delete (admin)</button>${isSp(l)?`<button class="btn o" onclick="unsp(${l.id})">Remove sponsorship</button>`:''}</div>`:''}</div>
    <div class="sec"><div class="note" style="margin:0"><b>🔎 Book an inspection · fixed fee ${N(inspFee(l))}</b><br>A local inspector visits and sends you photos, video and a report. <span class="chip">🔒 Protected by Nesta Escrow</span><br><span class="mu" style="font-size:13px">The inspector is only paid after you confirm.</span><button class="btn w" onclick="bookM(${l.id})">Book Inspection</button></div></div>
    ${sim.length?`<div class="sec"><h3>Similar homes</h3><div class="sim">${sim.map(x=>{const m=(x.media||[]).find(q=>q.kind=='image');return `<div class="sc" onclick="show(${x.id})"><div class="im"${m?` style="background-image:url('${mu(m.path)}')"`:''}></div><div class="tx"><b>${N(x.price)}</b><br><span class="mu">${esc(x.title.slice(0,32))}<br>${esc(x.city)}</span></div></div>`}).join('')}</div></div>`:''}
    <div class="sec"><div class="safe"><b>Stay safe.</b> Never send money before you have inspected the property and checked the documents. Nesta never asks for payment in chat.</div><p class="c mu"><a style="cursor:pointer;text-decoration:underline" onclick="reportL(${l.id})">⚠ Report this listing</a></p></div>
   </div>`,own?`<button class="btn o" onclick="inbox(${l.id})">💬 Messages</button><button class="btn" onclick="editL(${l.id})">✏️ Edit listing</button>`:isGone(l)?`<div class="mu c" style="flex:1;padding:10px 0"><b>${l.status=='sold'?'Sold':'Rented'}</b> · no longer available</div><button class="btn" onclick="chat(${l.id})">💬 Message the lister</button>`:escOK(l)?`<div class="ctc"><button class="btn pay" onclick="escM(${l.id})">🔒 Pay Agency Fee Securely<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><button class="btn o sm" onclick="bookM(${l.id})">Book Inspection</button></div>`:dealOK(l)?`<div class="ctc"><button class="btn pay" onclick="dealM(${l.id},'${l.owner_id}','pay')">🔒 Pay Securely with Nesta Escrow<small style="display:block;font-weight:400;font-size:11px;opacity:.9;margin-top:2px">Protected by Nesta Escrow</small></button><div class="row"><button class="btn o sm" onclick="bookM(${l.id})">🔎 Book Inspection</button><button class="btn o sm" onclick="chat(${l.id})">💬 Chat</button></div></div>`:`<button class="btn o" onclick="bookM(${l.id})">🔎 Book inspection</button><button class="btn" onclick="chat(${l.id})">💬 Chat with ${esc((p.name||'agent').split(' ')[0])}</button>`);
   if(me&&!own&&!VL[l.id]){VL[l.id]=1;sb.rpc('view_log',{lid:l.id}).then(()=>{},()=>{})}
-  setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price);loadPH(l);if($('ownbox'))loadOwnProof(l)},80);
+  setTimeout(()=>{initDMap(l);if($('mpay'))calcPay(l.price);loadPH(l);if($('ownbox'))loadOwnProof(l);if($('vaultbox'))loadVault(l)},80);
 }
 async function del(id){
   if(!confirm('Delete this listing?'))return;
@@ -660,7 +666,7 @@ async function inspDone(id){
 /* ---------- admin ---------- */
 async function adminM(t='v'){
   if(!isAdm)return;
-  const tabs=`<div class="tabs">${[['v','KYC'],['o','Ownership'],['p','Sponsored'],['e','Escrow'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
+  const tabs=`<div class="tabs">${[['v','KYC'],['o','Ownership'],['r','Credentials'],['p','Sponsored'],['e','Escrow'],['c','Complaints'],['i','Inspections']].map(([k,n])=>`<button class="tab${t==k?' on':''}" onclick="adminM('${k}')">${n}</button>`).join('')}</div>`;
   let h='';
   if(t=='v'){
     h=await kycQueue();
@@ -675,6 +681,18 @@ async function adminM(t='v'){
       OQ=rows;
       const OR=['Document is unclear. Please upload again.','Name on the document does not match the owner’s ID.','Document does not match this property.','This type of document is not accepted.'];
       h=rows.map((r,i)=>`<div class="note kc"><b>${esc(r.listings?.title)}</b><br><span class="mu">${esc(r.listings?.area?r.listings.area+', ':'')}${esc(r.listings?.city)} · ${esc(r.listings?.type)}</span><br>Owner account: <b>${esc(r.owner?.name)}</b><br>Name on their ID: <b>${esc(kn[r.owner_id]||'not on file')}</b><br>Document type: <b>${esc(r.doc_type)}</b>${r.note?`<br><span class="mu">Note: ${esc(r.note)}</span>`:''}<div class="dg" style="margin-top:8px">${(r.file_paths||[]).map(f=>su[f]?(/\.(jpe?g|png|webp|gif|heic)$/i.test(f)?`<div class="dc"><img src="${su[f]}" alt="" onclick="lbox('${su[f]}')"></div>`:`<div class="dc"><a href="${su[f]}" target="_blank" rel="noopener">Open document ↗</a></div>`):'').join('')}</div><p class="mu" style="margin:10px 0 0"><b>Check:</b> the name on the document matches the owner's ID name, and the document describes this property.</p><select id="os${i}"><option value="">Reject reason (pick one)…</option>${OR.map(x=>`<option>${esc(x)}</option>`).join('')}</select><input id="ot${i}" placeholder="…or type your own reason"><div class="row" style="margin-top:10px"><button class="btn" onclick="oreview(${i},true)">✔ Approve ownership</button><button class="btn o" onclick="oreview(${i},false)">Reject</button></div></div>`).join('')||'<p class="mu">No pending ownership proofs.</p>';
+    }
+  }else if(t=='r'){
+    const {data,error}=await sb.from('agent_credentials').select('*,agent:profiles!user_id(name)').eq('status','pending').order('created_at');
+    if(error)h=`<p class="er">${esc(error.message)}</p>`;
+    else{
+      const rows=data||[],ids=[...new Set(rows.map(r=>r.user_id))],kn={};
+      if(ids.length){const q=await sb.from('kyc').select('user_id,full_name').in('user_id',ids);(q.data||[]).forEach(x=>kn[x.user_id]=x.full_name)}
+      const paths=[...new Set(rows.flatMap(r=>r.file_paths||[]))],su={};
+      if(paths.length){const r=await sb.storage.from('kyc-docs').createSignedUrls(paths,1800);(r.data||[]).forEach(x=>{if(x.signedUrl)su[x.path]=x.signedUrl})}
+      CQ=rows;
+      const CR=['Document is unclear. Please upload again.','Name or company on the document does not match the agent.','Registration number does not match the document.','This document has expired.'];
+      h=rows.map((r,i)=>`<div class="note kc"><b>${esc(credLabel(r))}</b> · ${esc(r.reg_number)}<br>Agent account: <b>${esc(r.agent?.name)}</b><br>Name on their ID: <b>${esc(kn[r.user_id]||'not on file')}</b>${r.expiry_date?`<br>Expires: <b>${dayY(r.expiry_date)}</b>`:''}<div class="dg" style="margin-top:8px">${(r.file_paths||[]).map(f=>su[f]?(/\.(jpe?g|png|webp|gif|heic)$/i.test(f)?`<div class="dc"><img src="${su[f]}" alt="" onclick="lbox('${su[f]}')"></div>`:`<div class="dc"><a href="${su[f]}" target="_blank" rel="noopener">Open document ↗</a></div>`):'').join('')}</div><p class="mu" style="margin:10px 0 0"><b>Check:</b> the registration number matches the register, the holder matches this agent, and it has not expired.</p><select id="cs${i}"><option value="">Reject reason (pick one)…</option>${CR.map(x=>`<option>${esc(x)}</option>`).join('')}</select><input id="ct${i}" placeholder="…or type your own reason"><div class="row" style="margin-top:10px"><button class="btn" onclick="creview(${i},true)">✔ Approve</button><button class="btn o" onclick="creview(${i},false)">Reject</button></div></div>`).join('')||'<p class="mu">No pending credentials.</p>';
     }
   }else if(t=='p'){
     const {data,error}=await sb.from('promo_requests').select('*,listings!listing_id(title),profiles!user_id(name)').eq('status','pending').order('created_at');
@@ -1074,6 +1092,7 @@ async function profileM(uid){
   if(!uid)return;
   const {data:p}=await sb.from('profiles').select('*').eq('id',uid).maybeSingle();
   if(!p||p.role=='buyer'){alert('This person does not have a public profile.');return}
+  {const [crs,trr]=await Promise.all([sb.from('credentials_public').select('*').eq('user_id',uid),sb.rpc('agent_trust',{uids:[uid]})]);CRED[uid]=crs.data||[];if(trr.data&&trr.data[0])TR[uid]=trr.data[0]}
   const rs=(RT[uid]||[]).slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),n=rs.length,avg=n?rs.reduce((a,x)=>a+x.stars,0)/n:0;
   const ids=[...new Set(rs.map(x=>x.rater_id))],nm={};
   if(ids.length){const q=await sb.from('profiles').select('id,name').in('id',ids);(q.data||[]).forEach(x=>nm[x.id]=x.name)}
@@ -1084,10 +1103,10 @@ async function profileM(uid){
   const revs=rs.length?rs.slice(0,20).map(x=>`<div class="rv"><span style="color:var(--ac)">${stars(x.stars)}</span> <b>${esc((nm[x.rater_id]||'User').split(' ')[0])}</b> <span class="mu">· ${new Date(x.created_at).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})}</span>${x.comment?`<div>${esc(x.comment)}</div>`:''}</div>`).join(''):'<p class="mu">No reviews yet. People can review after they chat or book an inspection.</p>';
   const tl=(ok,t)=>`<div><span class="${ok?'y':'n'}">${ok?'✔':'○'}</span><span>${t}</span></div>`;
   const html=`<div class="dbar"><button style="left:12px" onclick="closeM()">←</button><button style="right:62px" onclick="shareP('${uid}')">⤴</button><button style="right:12px" onclick="closeM()">×</button></div>
-  <div class="pcv"><div class="pav${v>=2?' gold':''}">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><h2>${esc(p.name||'—')}</h2><div>${badge}</div><div class="pm">${esc(R)}${p.agency?' · '+esc(p.agency):''}</div></div>
+  <div class="pcv"><div class="pav${v>=2?' gold':''}">${esc((p.name||'?').slice(0,1).toUpperCase())}</div><h2>${esc(p.name||'—')}</h2><div>${badge}</div><div style="margin-top:6px">${sealHTML(uid)}</div><div class="pm">${esc(R)}${p.agency?' · '+esc(p.agency):''}</div></div>
   <div class="dsheet">
    <div class="stats"><div><b>${lst.filter(x=>!isGone(x)).length}</b><span>Active</span></div><div><b>${n?avg.toFixed(1):'–'}</b><span>Rating</span></div><div><b>${n}</b><span>Reviews</span></div><div><b>${new Date(p.created_at).toLocaleDateString('en-NG',{month:'short',year:'2-digit'})}</b><span>Joined</span></div></div>
-   <div class="sec"><h3>Trust &amp; verification</h3><div class="tl">${tl(v>=1,'Identity checked (government ID and selfie)')}${tl(v>=2,'Address and business details checked')}${tl(lst.some(isGone),lst.filter(isGone).length+' propert'+(lst.filter(isGone).length==1?'y':'ies')+' sold or rented through Nesta')}${tl(n>0,n?n+' review'+(n==1?'':'s')+' from real clients':'No client reviews yet')}</div></div>
+   ${trCard(TR[uid])}<div class="sec"><h3>Trust &amp; verification</h3><div class="tl">${tl(v>=1,'Identity checked (government ID and selfie)')}${tl(v>=2,'Address and business details checked')}${tl(hasSeal(uid),(CRED[uid]||[]).length?'Licences verified: '+(CRED[uid]||[]).map(c=>esc(credLabel(c))).join(', '):'No professional licences verified yet')}${tl(lst.some(isGone),lst.filter(isGone).length+' propert'+(lst.filter(isGone).length==1?'y':'ies')+' sold or rented through Nesta')}${tl(n>0,n?n+' review'+(n==1?'':'s')+' from real clients':'No client reviews yet')}</div></div>
    <div class="sec"><h3>About</h3><p style="white-space:pre-wrap;margin:0">${p.bio?esc(p.bio):'<span class="mu">This lister has not added a bio yet.</span>'}</p></div>
    <div class="sec"><h3>Ratings &amp; reviews</h3>${n?`<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div class="dp">${avg.toFixed(1)}</div><div><span style="color:var(--ac);font-size:20px">${stars(avg)}</span><br><span class="mu">${n} review${n==1?'':'s'}</span></div></div>${bars}`:''}${revs}</div>
    <div class="sec"><h3>${p.role=='inspector'?'Inspector':'Active listings'}${p.role!='inspector'?' ('+lst.length+')':''}</h3>${p.role=='inspector'?'<p class="mu" style="margin:0">Book this inspector from any listing page for a flat fee.</p>':lst.length?`<div class="grid" style="padding-bottom:0">${lst.map(card).join('')}</div>`:'<p class="mu">No active listings right now.</p>'}</div>
@@ -1560,6 +1579,157 @@ async function ssRun(id){
 }
 async function ssAlert(id,on){const {error}=await sb.from('saved_searches').update({alerts:on}).eq('id',id);if(error)return alert(error.message);searchesM()}
 async function ssDel(id){if(!confirm('Delete this saved search?'))return;const {error}=await sb.from('saved_searches').delete().eq('id',id);if(error)return alert(error.message);searchesM()}
+
+/* ---------- credentials, "Verified by Nesta" seal, trust score ---------- */
+let CRED={},TR={},CQ=[],VAULTN=0;
+const CRED_T={cac:'CAC registration',lasrera:'LASRERA (Lagos)',esvarbon:'ESVARBON',niesv:'NIESV member',state:'State licence'};
+const credLabel=c=>c.cred_type=='state'&&c.label?c.label:(CRED_T[c.cred_type]||'Licence');
+const hasSeal=uid=>(CRED[uid]||[]).length>0;
+const sealHTML=uid=>hasSeal(uid)?'<span class="seal">🛡 Verified by Nesta</span>':'';
+const credRow=uid=>(CRED[uid]||[]).length?`<div style="margin-top:8px">${(CRED[uid]||[]).map(c=>`<span class="chip">✔ ${esc(credLabel(c))}</span>`).join('')}</div>`:'';
+const trLabel=t=>t.score>=85?'Excellent':t.score>=70?'Strong':t.score>=50?'Good':'Building trust';
+const trLine=uid=>{const t=TR[uid];return t?`<span style="font-size:13px"><b>Trust score ${t.score}/100</b> · ${trLabel(t)}</span><br>`:''};
+const trRow=l=>{
+  const sl=hasSeal(l.owner_id)?sealHTML(l.owner_id):'',t=TR[l.owner_id],tc=t&&['agent','landlord'].includes(l.profiles?.role)?`<span class="tchip2">Trust ${t.score}</span>`:'';
+  return (sl||tc)?`<div style="margin:6px 0">${sl}${tc}</div>`:'';
+};
+function trCard(t){
+  if(!t)return '';
+  const rows=[['Completed escrow deals',t.deals],['Dispute rate',t.closed>=3?Math.round(t.disputes/t.closed*100)+'%':'Not enough deals yet'],['Typical response time',t.resp_n>0&&t.resp_hours!=null?(t.resp_hours<1?'under 1 hour':(+t.resp_hours).toFixed(t.resp_hours<10?1:0)+' hours'):'Not enough chats yet'],['Client rating',t.rating_n?(+t.avg_rating).toFixed(1)+' ★ ('+t.rating_n+')':'No reviews yet'],['Documents & credentials',t.completeness+'% complete']];
+  return `<div class="sec"><h3>Nesta Trust Score</h3><div class="trbox"><div class="trring"><b>${t.score}</b><span>/ 100</span></div><div><b>${trLabel(t)}</b><br><span class="mu" style="font-size:13px">Based on real activity on Nesta: deals, disputes, response time, ratings and documents. It cannot be bought.</span></div></div><div class="facts" style="margin-top:10px;grid-template-columns:1fr">${rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div></div>`;
+}
+async function loadTrust(){
+  try{
+    const ids=[...new Set(L.filter(l=>l.profiles?.role&&l.profiles.role!='buyer').map(l=>l.owner_id))].slice(0,200);
+    const [c,t]=await Promise.all([sb.from('credentials_public').select('*'),ids.length?sb.rpc('agent_trust',{uids:ids}):Promise.resolve({data:[]})]);
+    CRED={};(c.data||[]).forEach(x=>(CRED[x.user_id]=CRED[x.user_id]||[]).push(x));
+    TR={};(t.data||[]).forEach(x=>TR[x.user_id]=x);
+    render();
+  }catch(e){}
+}
+async function credM(){
+  if(!me)return authM();
+  if((prof?.kyc_level||0)<1){alert('Finish Basic verification first.');return kycM()}
+  const {data,error}=await sb.from('agent_credentials').select('*').eq('user_id',me.id).order('created_at',{ascending:false});
+  const row=c=>`<div class="note"><b>${esc(credLabel(c))}</b> · ${esc(c.reg_number)}<br>${c.status=='approved'?'<span class="ok">✔ Verified by Nesta</span>':c.status=='pending'?'⏳ Under review':'<span class="er">Not approved: '+esc(c.reject_reason||'')+'</span>'}${c.expiry_date?'<br><span class="mu">Expires '+dayY(c.expiry_date)+'</span>':''}</div>`;
+  openF('📜 Licences & credentials',`<p class="mu" style="margin-top:0">Add your business and professional registrations. Nesta checks each one by hand. Verified agents get the <b>Verified by Nesta</b> seal on their profile and every listing, and a higher Trust Score.</p>${error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(row).join('')||'<p class="mu">No credentials added yet.</p>'}<h3>Add a credential</h3><select id="cct" onchange="$('ccl').style.display=this.value=='state'?'':'none'">${Object.entries(CRED_T).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select><input id="ccl" maxlength="80" placeholder="Name of the licence (for other state licences)" style="display:none"><input id="ccn" maxlength="60" placeholder="Registration or membership number"><label class="mu">Expiry date (if any)</label><input id="cce" type="date"><label class="mu">Certificate or membership card (1 or 2 files)</label><input id="ccf" type="file" accept="image/*,application/pdf" multiple><button class="btn w" id="ccb" onclick="credSend()">Submit for review</button><p id="er" class="er"></p>`,accM);
+}
+async function credSend(){
+  const type=$('cct').value,label=$('ccl').value.trim(),num=$('ccn').value.trim(),exp=$('cce').value,fs=[...$('ccf').files].slice(0,2);
+  if(num.length<2)return err('Enter the registration or membership number');
+  if(type=='state'&&label.length<3)return err('Enter the name of the licence');
+  if(!fs.length)return err('Upload the certificate or card');
+  const b=$('ccb');b.disabled=true;b.textContent='Uploading…';
+  try{
+    const paths=[];for(const f of fs)paths.push(await kUp(f,'cred-'+type));
+    const r=await sb.from('agent_credentials').insert({cred_type:type,label:type=='state'?label:null,reg_number:num,file_paths:paths,expiry_date:exp||null});
+    if(r.error)throw new Error(/duplicate|unique/i.test(r.error.message)?'You already have one of these waiting for review.':r.error.message);
+    credM();
+  }catch(e){err(e.message||String(e));b.disabled=false;b.textContent='Submit for review'}
+}
+async function creview(i,ok){
+  const r=CQ[i];let reason=null;
+  if(!ok){reason=($('ct'+i).value.trim()||$('cs'+i).value||'').slice(0,200);if(!reason)return alert('Pick or type a reason, so the agent knows what to fix.')}
+  const {error}=await sb.rpc('review_credential',{cid:r.id,approve:ok,reason});
+  if(error)return alert(error.message);
+  await loadTrust();adminM('r');
+}
+
+/* ---------- document vault ---------- */
+const VAULT_T=['Certificate of Occupancy (C of O)','Deed of Assignment',"Governor's Consent",'Survey plan','Building approval','Receipt of purchase','Other'];
+async function vaultPing(){
+  try{
+    if(!prof||!['agent','landlord'].includes(prof.role)){VAULTN=0;return}
+    const r=await sb.from('vault_requests').select('id',{count:'exact',head:true}).eq('owner_id',me.id).eq('status','pending');
+    VAULTN=r.count||0;
+  }catch(e){}
+}
+async function loadVault(l){
+  const el=$('vaultbox');if(!el)return;
+  const own=me&&l.owner_id==me.id,head='<h3>🗄 Document vault</h3>';
+  const lawyer='<p class="mu" style="font-size:12px;margin:8px 0 0">⚖️ Optional lawyer review of these documents is coming soon.</p>';
+  if(own){
+    const [dr,rq]=await Promise.all([sb.from('vault_docs').select('*').eq('listing_id',l.id).order('created_at',{ascending:false}),sb.from('vault_requests').select('*,req:profiles!requester_id(name)').eq('listing_id',l.id).in('status',['pending','approved']).order('created_at',{ascending:false})]);
+    if(!$('vaultbox'))return;
+    const docs=(dr.data||[]).map(d=>`<div class="rv"><b>📄 ${esc(d.title)}</b> <span class="mu">· ${esc(d.doc_type)}</span> <a style="cursor:pointer;color:#c53030;font-size:13px" onclick="vaultDel(${d.id},'${esc(d.path)}',${l.id})">Remove</a></div>`).join('')||'<p class="mu">No documents yet.</p>';
+    const reqs=(rq.data||[]).map(r=>r.status=='pending'?`<div class="note"><b>${esc(r.req?.name||'Someone')}</b> asks for view-only access${r.message?`<br><span class="mu">“${esc(r.message)}”</span>`:''}<div class="row" style="margin-top:8px"><button class="btn" onclick="vaultDecide(${r.id},true,${l.id})">Approve (14 days)</button><button class="btn o" onclick="vaultDecide(${r.id},false,${l.id})">Decline</button></div></div>`:`<div class="mu" style="margin:6px 0">✔ ${esc(r.req?.name||'')} can view until ${dayY(r.expires_at)} <a style="cursor:pointer;text-decoration:underline" onclick="vaultRevoke(${r.id},${l.id})">Revoke</a></div>`).join('');
+    el.innerHTML=head+`<p class="mu" style="margin-top:0">Private. Only people you approve can view these, for a limited time. Great for buyers abroad.</p>${reqs}${docs}<select id="vdt">${VAULT_T.map(t=>`<option>${esc(t)}</option>`).join('')}</select><input id="vdn" maxlength="100" placeholder="Document name, e.g. Survey plan 2021"><input id="vdf" type="file" accept="image/*,application/pdf"><button class="btn w" id="vdb" onclick="vaultAdd(${l.id})">Upload to vault</button>${lawyer}`;
+    return;
+  }
+  const pub=await sb.from('vault_public').select('*').eq('listing_id',l.id);
+  if(!$('vaultbox'))return;
+  const types=pub.data||[];
+  if(!types.length){el.innerHTML=head+'<p class="mu" style="margin:0">The lister has not uploaded documents for this property yet. Ask in chat.</p>';return}
+  const chips=types.map(t=>`<span class="chip">📄 ${esc(t.doc_type)}${t.n>1?' ×'+t.n:''}</span>`).join('');
+  if(!me){el.innerHTML=head+`<p class="mu" style="margin-top:0">Documents available to view on request:</p>${chips}<button class="btn w" onclick="authM()">Sign in to request access</button>${lawyer}`;return}
+  const rq=await sb.from('vault_requests').select('*').eq('listing_id',l.id).eq('requester_id',me.id).order('created_at',{ascending:false}).limit(1);
+  const r=(rq.data||[])[0],ok=r&&r.status=='approved'&&(!r.expires_at||new Date(r.expires_at).getTime()>Date.now());
+  if(!$('vaultbox'))return;
+  if(ok){
+    const dr=await sb.from('vault_docs').select('*').eq('listing_id',l.id).order('created_at',{ascending:false});
+    if(!$('vaultbox'))return;
+    el.innerHTML=head+`<p class="mu" style="margin-top:0">✔ You have view-only access until <b>${dayY(r.expires_at)}</b>. Please do not share these documents.</p>${(dr.data||[]).map(d=>`<div class="rv"><b>📄 ${esc(d.title)}</b> <span class="mu">· ${esc(d.doc_type)}</span><br><button class="btn o" style="margin-top:6px" onclick="vaultView('${esc(d.path)}','${esc(d.title).replace(/'/g,'')}')">View (view only)</button></div>`).join('')}${lawyer}`;
+    return;
+  }
+  const msg=r&&r.status=='pending'?'<p>⏳ Your request was sent. The lister will reply soon.</p>':r&&r.status=='declined'?'<p class="mu">The lister declined your last request. You can ask again after chatting.</p><button class="btn w" onclick="vaultReq('+l.id+')">Request access again</button>':r&&['approved','revoked'].includes(r.status)?'<p class="mu">Your access has ended.</p><button class="btn w" onclick="vaultReq('+l.id+')">Request access again</button>':'<button class="btn w" onclick="vaultReq('+l.id+')">Request view-only access</button>';
+  el.innerHTML=head+`<p class="mu" style="margin-top:0">Documents available to view on request, from anywhere:</p>${chips}${msg}${lawyer}`;
+}
+async function vaultReq(lid){
+  const m=prompt('Message to the lister (optional)');if(m===null)return;
+  const r=await sb.rpc('vault_request',{lid,msg:m.trim()||null});if(r.error)return alert(r.error.message);
+  const l=L.find(x=>x.id==lid);if(l)escMsgTo(l.owner_id,lid,'🗄 I would like view-only access to the documents for this property. Please review my request in your Document vault.');
+  if(l)loadVault(l);
+}
+async function vaultDecide(rid,ok,lid){
+  const {error}=await sb.rpc('vault_decide',{rid,approve:ok,days:14});if(error)return alert(error.message);
+  const l=L.find(x=>x.id==lid);if(l)loadVault(l);vaultPing();
+}
+async function vaultRevoke(rid,lid){
+  if(!confirm('Remove this person\'s access?'))return;
+  const {error}=await sb.rpc('vault_revoke',{rid});if(error)return alert(error.message);
+  const l=L.find(x=>x.id==lid);if(l)loadVault(l);
+}
+async function vaultAdd(lid){
+  const f=$('vdf').files[0];if(!f)return alert('Choose a file first');
+  if(f.size>25e6)return alert('That file is too large (max 25MB)');
+  const b=$('vdb');b.disabled=true;b.textContent='Uploading…';
+  try{
+    let blob=f,ext=(f.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'bin',ct=f.type;
+    if((f.type||'').startsWith('image/')){blob=await shrink(f);ext='jpg';ct='image/jpeg'}
+    const path=`${me.id}/${lid}/${Date.now()}.${ext}`;
+    const up=await sb.storage.from('vault').upload(path,blob,{contentType:ct||'application/octet-stream'});if(up.error)throw up.error;
+    const r=await sb.from('vault_docs').insert({listing_id:lid,doc_type:$('vdt').value,title:($('vdn').value.trim()||f.name).slice(0,100),path});if(r.error)throw r.error;
+    const l=L.find(x=>x.id==lid);if(l)loadVault(l);loadTrust();
+  }catch(e){alert(e.message||String(e));b.disabled=false;b.textContent='Upload to vault'}
+}
+async function vaultDel(id,path,lid){
+  if(!confirm('Remove this document from the vault?'))return;
+  const r=await sb.from('vault_docs').delete().eq('id',id);if(r.error)return alert(r.error.message);
+  await sb.storage.from('vault').remove([path]);
+  const l=L.find(x=>x.id==lid);if(l)loadVault(l);
+}
+async function vaultView(path,title){
+  const {data,error}=await sb.storage.from('vault').createSignedUrl(path,300);
+  if(error)return alert(error.message);
+  const u=data.signedUrl;
+  if(/\.(jpe?g|png|webp|gif)$/i.test(path)){
+    const wm=('Nesta view-only · '+(prof?.name||'')+' · '+new Date().toLocaleDateString('en-NG')).replace(/[<>&'"]/g,'');
+    const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='150'><text x='10' y='90' transform='rotate(-25 150 75)' fill='white' fill-opacity='.4' font-size='15' font-family='sans-serif'>${wm}</text></svg>`;
+    const d=document.createElement('div');d.className='lb';
+    d.innerHTML=`<img src="${u}" alt="" oncontextmenu="return false" style="pointer-events:none"><div style="position:absolute;inset:0;pointer-events:none;background:url(&quot;data:image/svg+xml,${encodeURIComponent(svg)}&quot;)"></div>`;
+    d.onclick=()=>d.remove();document.body.appendChild(d);
+  }else openM(`<h2>${esc(title)}</h2><p class="mu">View-only link, valid for 5 minutes. Please do not share it.</p><a class="btn w" style="display:block;text-align:center;text-decoration:none" href="${u}" target="_blank" rel="noopener">Open document ↗</a>`);
+}
+async function vaultM(){
+  if(!me)return authM();
+  const {data,error}=await sb.from('vault_requests').select('*,listings!listing_id(title),req:profiles!requester_id(name)').eq('owner_id',me.id).eq('status','pending').order('created_at',{ascending:false});
+  const mine=L.filter(l=>l.owner_id==me.id);
+  openF('🗄 Document vault',`<p class="mu" style="margin-top:0">Upload title documents for each listing, then approve view-only access for serious buyers, including those abroad. Open one of your listings to add documents.</p><h3>Access requests</h3>${error?`<p class="er">${esc(error.message)}</p>`:(data||[]).map(r=>`<div class="note"><b>${esc(r.req?.name||'Someone')}</b> wants to view documents for <b>${esc(r.listings?.title||'')}</b>${r.message?`<br><span class="mu">“${esc(r.message)}”</span>`:''}<div class="row" style="margin-top:8px"><button class="btn" onclick="vaultDecide2(${r.id},true)">Approve (14 days)</button><button class="btn o" onclick="vaultDecide2(${r.id},false)">Decline</button></div></div>`).join('')||'<p class="mu">No pending requests.</p>'}<h3>My listings</h3>${mine.map(l=>`<div class="note pt" onclick="show(${l.id})"><b>${esc(l.title)}</b><br><span class="mu">Open to manage documents ›</span></div>`).join('')||'<p class="mu">You have no listings yet.</p>'}`,accM);
+}
+async function vaultDecide2(rid,ok){
+  const {error}=await sb.rpc('vault_decide',{rid,approve:ok,days:14});if(error)return alert(error.message);
+  await vaultPing();vaultM();
+}
 
 loadAll();
 </script>
